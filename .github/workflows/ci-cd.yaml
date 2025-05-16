@@ -7,15 +7,15 @@ on:
       - '**'
 
 jobs:
-  build:
+  build-dotnet:
+    name: Build .NET Application
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: Setup .NET
-        uses: actions/setup-dotnet@v2
+        uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '9.0.300'
 
@@ -28,16 +28,77 @@ jobs:
       - name: Publish application
         run: dotnet publish Zion.Reminder.Api.csproj --configuration Release --output ./publish
 
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-publish
+          path: ./publish
+          retention-days: 1
+
+  build-docker:
+    name: Build & Push Docker Image
+    needs: build-dotnet
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    
+    permissions:
+      id-token: write
+      contents: read
+      
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: app-publish
+          path: ./publish
+          
+      # Configure AWS credentials - using OIDC for improved security
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::381492000543:role/zion-app-oidc-role
+          aws-region: eu-west-2
+
+      # Login to Amazon ECR
       - name: Login to Amazon ECR
-        run: |
-          aws ecr get-login-password --region <your-region> | docker login --username AWS --password-stdin <your-account-id>.dkr.ecr.<your-region>.amazonaws.com
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Build and push Docker image to ECR
+      # Install Trivy for security scanning
+      - name: Install Trivy
         run: |
-          docker build -t myapp:latest .
-          docker tag myapp:latest <your-account-id>.dkr.ecr.<your-region>.amazonaws.com/myapp:latest
-          docker push <your-account-id>.dkr.ecr.<your-region>.amazonaws.com/myapp:latest
+          curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin v0.47.0
 
-      - name: Deploy to production
+      # Build, tag, and push the image to Amazon ECR
+      - name: Build, tag, and push Docker image to Amazon ECR
+        env:
+          REGISTRY: 381492000543.dkr.ecr.eu-west-2.amazonaws.com
+          REPOSITORY: zion-app
+          IMAGE_TAG: ${{ github.sha }}
         run: |
-          # Add your deployment script or command here
+          # Build Docker image
+          docker build -t $REGISTRY/$REPOSITORY:$IMAGE_TAG .
+          
+          # Add "latest" tag
+          docker tag $REGISTRY/$REPOSITORY:$IMAGE_TAG $REGISTRY/$REPOSITORY:latest
+          
+          # Scan the image for vulnerabilities before pushing (informational only)
+          echo "Scanning Docker image for vulnerabilities..."
+          trivy image --severity HIGH,CRITICAL $REGISTRY/$REPOSITORY:$IMAGE_TAG
+          
+          # Push images to ECR
+          echo "Pushing images to ECR..."
+          docker push $REGISTRY/$REPOSITORY:$IMAGE_TAG
+          docker push $REGISTRY/$REPOSITORY:latest
+          
+          echo "image=$REGISTRY/$REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
+
+      # # Optional: Deploy to your environment (e.g., ECS, EKS, etc.)
+      # - name: Deploy to production
+      #   if: github.ref == 'refs/heads/main' # Only deploy from main branch
+      #   run: |
+      #     # Add your deployment script or command here
+      #     echo "Deploying to production environment"
