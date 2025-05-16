@@ -35,5 +35,20 @@ namespace Zion.Reminder.Controllers
             _eventProcessor.DeleteReviewerNotifications(request);
             return Ok(new { success = true, message = "Reviewer event closed and notifications skipped if not sent." });
         }
+        
+        [HttpPost("send-to-reviewer")]
+        public IActionResult SendToReviewer([FromBody] SendToReviewerRequest request)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            _logger.LogInformation("Received request to send to reviewer: {ToEmail}, ForEmails: {ForEmails}", request.ToEmail, string.Join(",", request.ForEmails));
+
+            _eventProcessor.CreateSendToReviewerEvent(request);
+
+            return Ok(new { success = true, message = "Reviewer event and notifications created successfully" });
+        }
     }
 }
