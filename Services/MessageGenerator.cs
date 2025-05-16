@@ -68,7 +68,7 @@ public class MessageGenerator : IMessageGenerator
     {
         var doc = System.Text.Json.JsonDocument.Parse(@event.ContentJson!);
         var applicationUrl = doc.RootElement.GetProperty("ApplicationLink").GetString();
-        var endDate = doc.RootElement.GetProperty("StartDate").GetString();
+        var endDate = doc.RootElement.GetProperty("EndDate").GetString();
         var talentName = @event.ForName ?? "the talent";
         return $@"Write a polite email message to a colleague of {talentName}, asking them to provide feedback for the performance review.
             The feedback form is available at the following link: {applicationUrl}.
@@ -80,7 +80,7 @@ public class MessageGenerator : IMessageGenerator
     {
         var doc = System.Text.Json.JsonDocument.Parse(@event.ContentJson!);
         var applicationUrl = doc.RootElement.GetProperty("ApplicationLink").GetString();
-        var endDate = doc.RootElement.GetProperty("StartDate").GetString();
+        var endDate = doc.RootElement.GetProperty("EndDate").GetString();
         var talentName = @event.ForName ?? "the talent";
         int attempt = notification.Attempt;
 
