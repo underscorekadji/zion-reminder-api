@@ -1,7 +1,7 @@
 using Microsoft.EntityFrameworkCore;
-using zion_reminder_api.Models;
+using Zion.Reminder.Models;
 
-namespace zion_reminder_api.Data;
+namespace Zion.Reminder.Data;
 
 public class AppDbContext : DbContext
 {

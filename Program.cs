@@ -1,6 +1,5 @@
 using Microsoft.EntityFrameworkCore;
-using zion_reminder_api.Data;
-using zion_reminder_api.Models;
+using Zion.Reminder.Data;
 
 var builder = WebApplication.CreateBuilder(args);
 
