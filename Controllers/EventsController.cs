@@ -1,27 +1,32 @@
 using Microsoft.AspNetCore.Mvc;
-using Zion.Reminder.Data;
 using Zion.Reminder.Models;
+using Zion.Reminder.Services;
+using Microsoft.AspNetCore.Authorization;
 
-namespace Zion.Reminder.Controllers;
-
-[ApiController]
-[Route("api/[controller]")]
-public class EventsController : ControllerBase
+namespace Zion.Reminder.Controllers
 {
-    private readonly AppDbContext _context;
-    private readonly ILogger<EventsController> _logger;
-
-    public EventsController(AppDbContext context, ILogger<EventsController> logger)
+    [ApiController]
+    [Route("api/[controller]")]
+    [Authorize]
+    public class EventsController : ControllerBase
     {
-        _context = context;
-        _logger = logger;
-    }
+        private readonly ILogger<EventsController> _logger;
+        private readonly IEventProcessor _eventProcessor;
 
-    // GET: api/events/sent-to-tm
-    [HttpGet("sent-to-tm")]
-    public IActionResult GetSentToTm()
-    {
-        // Empty response as requested
-        return Ok();
+        public EventsController(ILogger<EventsController> logger, IEventProcessor eventProcessor)
+        {
+            _logger = logger;
+            _eventProcessor = eventProcessor;
+        }
+
+        [HttpPost("send-to-tm")]
+        public IActionResult SendToTm([FromBody] SendToTmRequest request)
+        {
+            _logger.LogInformation("Received request to send notification to TM {ToEmail}", request.ToEmail);
+
+            _eventProcessor.CreateSendToTmEvent(request);
+
+            return Ok(new { success = true, message = "Event created successfully" });
+        }
     }
 }
