@@ -8,39 +8,39 @@ public class AppDbContext : DbContext
     public AppDbContext(DbContextOptions<AppDbContext> options) : base(options)
     {
     }
-
-    public DbSet<ReminderModel> Reminders { get; set; } = null!;
-
-    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    public DbSet<Event> Events { get; set; } = null!;
+    public DbSet<Notification> Notifications { get; set; } = null!; protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
 
-        // Configure entity properties
-        modelBuilder.Entity<ReminderModel>(entity =>
+        // Configure Event entity
+        modelBuilder.Entity<Event>(entity =>
         {
             entity.HasKey(e => e.Id);
-            entity.Property(e => e.Title).IsRequired().HasMaxLength(200);
-            entity.Property(e => e.Description).HasMaxLength(1000);
+            entity.Property(e => e.From).IsRequired().HasMaxLength(255);
+            entity.Property(e => e.To).IsRequired().HasMaxLength(255);
+            entity.Property(e => e.For).HasMaxLength(255);
+            entity.Property(e => e.FromName).IsRequired().HasMaxLength(255);
+            entity.Property(e => e.ToName).IsRequired().HasMaxLength(255);
+            entity.Property(e => e.ForName).HasMaxLength(255);
+
+            // One-to-Many relationship with Notification
+            entity.HasMany(e => e.Notifications)
+                  .WithOne(n => n.Event)
+                  .HasForeignKey(n => n.EventId)
+                  .OnDelete(DeleteBehavior.Cascade);
         });
 
-        // Seed some initial data
-        modelBuilder.Entity<ReminderModel>().HasData(
-            new ReminderModel
-            {
-                Id = 1,
-                Title = "Complete project documentation",
-                Description = "Finish the API documentation for the reminder service",
-                DueDate = DateTime.UtcNow.AddDays(7),
-                Priority = Priority.High
-            },
-            new ReminderModel
-            {
-                Id = 2,
-                Title = "Weekly team meeting",
-                Description = "Discuss project progress and roadblocks",
-                DueDate = DateTime.UtcNow.AddDays(3),
-                Priority = Priority.Medium
-            }
-        );
+        // Configure Notification entity
+        modelBuilder.Entity<Notification>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.ChannelAddress).IsRequired().HasMaxLength(255);
+
+            // Many-to-One relationship with Event
+            entity.HasOne(n => n.Event)
+                  .WithMany(e => e.Notifications).HasForeignKey(n => n.EventId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
     }
 }
