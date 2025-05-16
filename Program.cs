@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Zion.Reminder.Models;
 using Zion.Reminder.Data;
+using Zion.Reminder.Middleware;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -36,6 +37,9 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 app.UseAuthorization();
+
+// Add global error handling middleware
+app.UseErrorHandler();
 
 // Add a simple hello world endpoint for testing
 app.MapGet("/hello", () => "Hello World from Zion Reminder API!");

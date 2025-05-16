@@ -1,34 +1,31 @@
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json.Serialization;
 
 namespace Zion.Reminder.Models;
 
-public class SendToTmRequest : RequestModel
+public class SendToTmRequest : SendToBaseRequest
 {
     [Required]
-    public string TmName { get; set; } = string.Empty;
-    
+    [JsonPropertyName("TmName")]
+    public override string ToName { get; set; } = string.Empty;
+
     [Required]
     [EmailAddress]
-    public string TmEmail { get; set; } = string.Empty;
-    
+    [JsonPropertyName("TmEmail")]
+    public override string ToEmail { get; set; } = string.Empty;
+
     [Required]
-    public string EmployeeName { get; set; } = string.Empty;
-    
-    [Required]
-    [EmailAddress]
-    public string EmployeeEmail { get; set; } = string.Empty;
-    
+    [JsonPropertyName("EmployeeName")]
+    public override string ForName { get; set; } = string.Empty;
+
     [Required]
     [EmailAddress]
-    public string From { get; set; } = string.Empty;
-    
-    [Required]
-    public string FromName { get; set; } = string.Empty;
-    
-    [Required]
-    public DateTime StartDate { get; set; }
-    
+    [JsonPropertyName("EmployeeEmail")]
+    public override string ForEmail { get; set; } = string.Empty;
+
     // Link to application
     [Url]
     public string? ApplicationLink { get; set; }
+
+    public DateTime? EndDate { get; set; }
 }

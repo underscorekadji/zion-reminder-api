@@ -30,20 +30,13 @@ public class Event
     public string ToName { get; set; } = string.Empty;
 
     [MaxLength(255)]
-    public string? ForName { get; set; }
-
-    [Required]
-    public DateTime StartDate { get; set; }
-
-    public DateTime? EndDate { get; set; }
-    
-    [Required] 
+    public string? ForName { get; set; }    [Required] 
     public EventStatus Status { get; set; } = EventStatus.Open;
     
     // Correlation ID for tracking related operations across services
     public Guid? CorrelationId { get; set; }
     
-    // Field for storing dynamic data in JSON format
+    // Field for storing dynamic data in JSON format (including StartDate and EndDate)
     public string? ContentJson { get; set; }
 
     // Navigation property - One event has many notifications
