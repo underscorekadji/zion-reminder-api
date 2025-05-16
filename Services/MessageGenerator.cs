@@ -54,30 +54,26 @@ public class MessageGenerator : IMessageGenerator
 
     private string PromptForTmNotification(Event @event, Notification notification)
     {
-        // Assume ContentJson always contains ApplicationLink and StartDate as strings
         var doc = System.Text.Json.JsonDocument.Parse(@event.ContentJson!);
         var applicationUrl = doc.RootElement.GetProperty("ApplicationLink").GetString();
         var startDate = doc.RootElement.GetProperty("StartDate").GetString();
         var talentName = @event.ForName ?? "the talent";
-        return $@"You are an assistant that generates very polite email messages for performance review notifications.
-            Write a message to a Talent Mentor, informing them that it is time for the performance review of their talent named {talentName}.
+        return $@"Write a polite email message to a Talent Mentor, informing them that it is time for the performance review of their talent named {talentName}.
             Ask them to initiate the review event at the following application URL: {applicationUrl}.
             The review should be started no later than this date: {startDate}.
-            Be formal, clear, and appreciative in your tone. End the message with a thank you and a professional closing.";
+            Be formal, clear, and appreciative in your tone. End the message with a thank you and a professional closing. Do not include a subject line.";
     }
 
     private string PromptForReviewerNewNotification(Event @event, Notification notification)
     {
-        // Assume ContentJson always contains ApplicationLink and StartDate as strings
         var doc = System.Text.Json.JsonDocument.Parse(@event.ContentJson!);
         var applicationUrl = doc.RootElement.GetProperty("ApplicationLink").GetString();
         var endDate = doc.RootElement.GetProperty("StartDate").GetString();
         var talentName = @event.ForName ?? "the talent";
-        return $@"You are an assistant that generates very polite email messages for performance review notifications.
-            Write a message to a colleague of {talentName}, asking them to provide feedback for the performance review.
+        return $@"Write a polite email message to a colleague of {talentName}, asking them to provide feedback for the performance review.
             The feedback form is available at the following link: {applicationUrl}.
             The feedback must be submitted no later than: {endDate}.
-            Be formal, clear, and appreciative in your tone. End the message with a thank you and a professional closing.";
+            Be formal, clear, and appreciative in your tone. End the message with a thank you and a professional closing. Do not include a subject line.";
     }
 
     private string PromptForReviewerReminderNotification(Event @event, Notification notification)
@@ -88,19 +84,23 @@ public class MessageGenerator : IMessageGenerator
         var talentName = @event.ForName ?? "the talent";
         int attempt = notification.Attempt;
 
-        string intro = $"You are an assistant that generates email reminders for performance review feedback collection.";
-        string recipient = $"Write a message to a colleague of {talentName}, ";
-        string formInfo = $"The feedback form is available at the following link: {applicationUrl}.\nThe feedback must be submitted no later than: {endDate}.";
+        string recipient = $"Write an email message to a colleague of {talentName}, ";
+        string formInfo = $@"The feedback form is available at the following link: {applicationUrl}.
+            The feedback must be submitted no later than: {endDate}.
+            ";
 
         if (attempt <= 2)
         {
-            return $"{intro}\n{recipient}reminding them to provide feedback for the performance review.\n{formInfo}\nBe formal, clear, and appreciative in your tone. End the message with a thank you and a professional closing.";
+            return $@"{recipient}reminding them to provide feedback for the performance review.
+                {formInfo}Be formal, clear, and appreciative in your tone. End the message with a thank you and a professional closing. Do not include a subject line.";
         }
         if (attempt == 3 || attempt == 4)
         {
-            return $"{intro}\n{recipient}reminding them again to provide feedback for the performance review.\n{formInfo}\nBe more insistent and less polite, but still professional. Stress the importance of timely completion.";
+            return $@"{recipient}reminding them again to provide feedback for the performance review.
+                {formInfo}Be more insistent and less polite, but still professional. Stress the importance of timely completion. Do not include a subject line.";
         }
         // attempt >= 5
-        return $"{intro}\n{recipient}warning them that they have not provided feedback for the performance review despite multiple reminders.\n{formInfo}\nIf the feedback is not submitted immediately, this situation will be escalated to upper management. Be strict and formal, and emphasize the consequences of further delay.";
+        return $@"{recipient}warning them that they have not provided feedback for the performance review despite multiple reminders.
+                {formInfo}If the feedback is not submitted immediately, this situation will be escalated to upper management. Be strict and formal, and emphasize the consequences of further delay. Do not include a subject line.";
     }
 }
