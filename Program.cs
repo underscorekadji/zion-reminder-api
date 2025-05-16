@@ -7,6 +7,10 @@ using Zion.Reminder.Config;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
+using LangChain;
+using OpenAI.GPT3;
+using OpenAI.GPT3.Interfaces;
+using OpenAI.GPT3.Managers;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -36,7 +40,8 @@ builder.Services.AddAuthorization();
 builder.Services.AddControllers();
 
 // Register custom services
-builder.Services.AddScoped<Zion.Reminder.Services.IEventProcessor, Zion.Reminder.Services.EventProcessor>();
+builder.Services.AddScoped<IEventProcessor, EventProcessor>();
+builder.Services.AddScoped<IMessageGenerator, MessageGenerator>();
 
 // Configure PostgreSQL database
 var databaseSettings = builder.Configuration.GetSection("DatabaseSettings").Get<DatabaseSettings>() 
@@ -63,6 +68,16 @@ if (!string.IsNullOrEmpty(emailPassword))
 }
 
 builder.Services.AddScoped<IEmailService, EmailService>();
+
+// Register OpenAISettings from configuration
+builder.Services.Configure<OpenAISettings>(builder.Configuration.GetSection("OpenAI"));
+
+// Register IOpenAIService using options
+builder.Services.AddScoped<IOpenAIService>(sp =>
+{
+    var options = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<OpenAISettings>>().Value;
+    return new OpenAIService(new OpenAI.GPT3.OpenAiOptions { ApiKey = options.ApiKey });
+});
 
 // Add Swagger/OpenAPI support
 builder.Services.AddEndpointsApiExplorer();
@@ -101,6 +116,9 @@ builder.Services.AddHostedService<NotificationWorker>();
 // Register channel processors
 builder.Services.AddScoped<IChannelProcessor, EmailChannelProcessor>();
 builder.Services.AddScoped<IChannelProcessor, TeamsChannelProcessor>();
+
+// Ensure appsettings.OpenAI.json is loaded
+builder.Configuration.AddJsonFile("appsettings.OpenAI.json", optional: true, reloadOnChange: true);
 
 var app = builder.Build();
 
