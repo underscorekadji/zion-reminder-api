@@ -63,6 +63,7 @@ if (!string.IsNullOrEmpty(emailPassword))
 }
 
 builder.Services.AddScoped<IEmailService, EmailService>();
+builder.Services.AddScoped<IReportService, ReportService>();
 
 // Add Swagger/OpenAPI support
 builder.Services.AddEndpointsApiExplorer();
