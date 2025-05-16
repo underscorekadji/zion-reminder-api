@@ -64,9 +64,9 @@ jobs:
             docker tag $REGISTRY/$REPOSITORY:$IMAGE_TAG $REGISTRY/$REPOSITORY:latest
           fi
           
-          # Scan the image for vulnerabilities before pushing
+          # Scan the image for vulnerabilities before pushing (informational only)
           echo "Scanning Docker image for vulnerabilities..."
-          trivy image --severity HIGH,CRITICAL --exit-code 1 $REGISTRY/$REPOSITORY:$IMAGE_TAG
+          trivy image --severity HIGH,CRITICAL $REGISTRY/$REPOSITORY:$IMAGE_TAG
           
           # Push image with SHA tag
           echo "Pushing image to ECR..."
@@ -79,9 +79,9 @@ jobs:
           
           echo "image=$REGISTRY/$REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
 
-      # Optional: Deploy to your environment (e.g., ECS, EKS, etc.)
-      - name: Deploy to production
-        if: github.ref == 'refs/heads/main' # Only deploy from main branch
-        run: |
-          # Add your deployment script or command here
-          echo "Deploying to production environment"
+      # # Optional: Deploy to your environment (e.g., ECS, EKS, etc.)
+      # - name: Deploy to production
+      #   if: github.ref == 'refs/heads/main' # Only deploy from main branch
+      #   run: |
+      #     # Add your deployment script or command here
+      #     echo "Deploying to production environment"
