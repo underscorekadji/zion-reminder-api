@@ -1,11 +1,13 @@
 using Microsoft.AspNetCore.Mvc;
 using Zion.Reminder.Models;
 using Zion.Reminder.Services;
+using Microsoft.AspNetCore.Authorization;
 
 namespace Zion.Reminder.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    [Authorize]
     public class EventsController : ControllerBase
     {
         private readonly ILogger<EventsController> _logger;

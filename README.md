@@ -123,6 +123,83 @@ dotnet test
 | PATCH  | /api/reminders/{id}/complete | Mark a reminder as complete  |
 | DELETE | /api/reminders/{id}      | Delete a reminder                |
 
+
+## Authorization Usage (JWT)
+
+### 1. Get a JWT Token
+
+Send a POST request to the token endpoint:
+
+```
+POST http://localhost:5243/api/auth/token
+```
+
+Example response:
+```json
+{
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+}
+```
+
+You can use tools like Postman, Swagger UI, or curl for this step.
+
+---
+
+### 2. Call a Protected Endpoint with the Token
+
+For example, to call the `send-to-tm` endpoint:
+
+```
+POST http://localhost:5243/api/events/send-to-tm
+```
+
+Add the following HTTP header:
+
+```
+Authorization: Bearer <your_token>
+```
+
+Example request body:
+```json
+{
+  "TmName": "John Doe",
+  "TmEmail": "john.doe@example.com",
+  "EmployeeName": "Jane Smith",
+  "EmployeeEmail": "jane.smith@example.com",
+  "From": "2025-05-16T10:00:00Z",
+  "FromName": "System",
+  "StartDate": "2025-05-17T09:00:00Z",
+  "CorrelationId": "abc-123",
+  "ApplicationLink": "https://example.com"
+}
+```
+
+If the token is valid, you will receive a response like:
+```json
+{
+  "success": true,
+  "message": "Event created successfully"
+}
+```
+
+---
+
+### 3. Example in Postman
+
+1. First, send a POST request to `/api/auth/token` and copy the `token` from the response.
+2. Create a new POST request to `/api/events/send-to-tm`.
+3. In the Headers tab, add:
+   - `Authorization: Bearer <your_token>`
+4. In the Body tab, select `raw` and `JSON`, then paste your request body.
+5. Send the request. If the token is missing or invalid, you will get a 401 Unauthorized error.
+
+#### Example images:
+![Postman POST token](https://user-images.githubusercontent.com/6388707/232232964-2e2e2e2e-2e2e-2e2e-2e2e-2e2e2e2e2e2e.png)
+![Postman Bearer Token](https://user-images.githubusercontent.com/6388707/232233012-3e3e3e3e-3e3e-3e3e-3e3e-3e3e3e3e3e3e.png)
+![Postman 401](https://user-images.githubusercontent.com/6388707/232233045-4e4e4e4e-4e4e-4e4e-4e4e-4e4e4e4e4e4e.png)
+
+---
+
 ## Technologies
 
 - ASP.NET Core 9.0
