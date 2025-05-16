@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Zion.Reminder.Data;
@@ -11,9 +12,11 @@ using Zion.Reminder.Data;
 namespace Zion.Reminder.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250516103121_AddEventsAndNotifications")]
+    partial class AddEventsAndNotifications
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -22,7 +25,7 @@ namespace Zion.Reminder.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
-            modelBuilder.Entity("Zion.Reminder.Models.Event", b =>
+            modelBuilder.Entity("Zion.Reminder.Models.ReminderEvent", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -78,7 +81,66 @@ namespace Zion.Reminder.Migrations
                     b.ToTable("Events");
                 });
 
-            modelBuilder.Entity("Zion.Reminder.Models.Notification", b =>
+            modelBuilder.Entity("Zion.Reminder.Models.ReminderModel", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime?>("CompletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<DateTime>("DueDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsCompleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<int>("Priority")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Reminders");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            CreatedAt = new DateTime(2025, 5, 16, 10, 31, 19, 284, DateTimeKind.Utc).AddTicks(6900),
+                            Description = "Finish the API documentation for the reminder service",
+                            DueDate = new DateTime(2025, 5, 23, 10, 31, 19, 284, DateTimeKind.Utc).AddTicks(7596),
+                            IsCompleted = false,
+                            Priority = 2,
+                            Title = "Complete project documentation"
+                        },
+                        new
+                        {
+                            Id = 2,
+                            CreatedAt = new DateTime(2025, 5, 16, 10, 31, 19, 284, DateTimeKind.Utc).AddTicks(8129),
+                            Description = "Discuss project progress and roadblocks",
+                            DueDate = new DateTime(2025, 5, 19, 10, 31, 19, 284, DateTimeKind.Utc).AddTicks(8131),
+                            IsCompleted = false,
+                            Priority = 1,
+                            Title = "Weekly team meeting"
+                        });
+                });
+
+            modelBuilder.Entity("Zion.Reminder.Models.ReminderNotification", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -107,9 +169,9 @@ namespace Zion.Reminder.Migrations
                     b.ToTable("Notifications");
                 });
 
-            modelBuilder.Entity("Zion.Reminder.Models.Notification", b =>
+            modelBuilder.Entity("Zion.Reminder.Models.ReminderNotification", b =>
                 {
-                    b.HasOne("Zion.Reminder.Models.Event", "Event")
+                    b.HasOne("Zion.Reminder.Models.ReminderEvent", "Event")
                         .WithMany("Notifications")
                         .HasForeignKey("EventId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -118,7 +180,7 @@ namespace Zion.Reminder.Migrations
                     b.Navigation("Event");
                 });
 
-            modelBuilder.Entity("Zion.Reminder.Models.Event", b =>
+            modelBuilder.Entity("Zion.Reminder.Models.ReminderEvent", b =>
                 {
                     b.Navigation("Notifications");
                 });
