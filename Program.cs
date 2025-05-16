@@ -151,13 +151,13 @@ void SetupServices(WebApplicationBuilder builder)
 
     builder.Services.AddScoped<IMessageGenerator, MessageGenerator>();
 
-    // Register OpenAISettings from configuration
-    builder.Services.Configure<OpenAISettings>(builder.Configuration.GetSection("OpenAI"));
+    // Register OpenAISettings using static factory method
+    builder.Services.AddSingleton(sp => OpenAISettings.FromConfiguration(builder.Configuration));
 
-    // Register IOpenAIService using options
+    // Register IOpenAIService using OpenAISettings
     builder.Services.AddScoped<IOpenAIService>(sp =>
     {
-        var options = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<OpenAISettings>>().Value;
+        var options = sp.GetRequiredService<OpenAISettings>();
         return new OpenAIService(new OpenAI.GPT3.OpenAiOptions { ApiKey = options.ApiKey });
     });
 }

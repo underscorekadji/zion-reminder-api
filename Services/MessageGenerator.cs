@@ -11,10 +11,12 @@ namespace Zion.Reminder.Services;
 public class MessageGenerator : IMessageGenerator
 {
     private readonly IOpenAIService _openAiService;
+    private readonly OpenAISettings _openAISettings;
 
-    public MessageGenerator(IOpenAIService openAiService)
+    public MessageGenerator(IOpenAIService openAiService, OpenAISettings openAISettings)
     {
         _openAiService = openAiService;
+        _openAISettings = openAISettings;
     }
 
     public async Task<string> GenerateMessageBodyAsync(Event @event, Notification notification)
@@ -27,7 +29,7 @@ public class MessageGenerator : IMessageGenerator
             {
                 ChatMessage.FromSystem(prompt)
             },
-            Model = "gpt-3.5-turbo"
+            Model = _openAISettings.Model
         });
 
         if (completionResult.Successful && completionResult.Choices.Count > 0)
@@ -42,65 +44,52 @@ public class MessageGenerator : IMessageGenerator
 
     private string PromptFactory(Event @event, Notification notification)
     {
-        if (@event.Type == EventType.TmNotification)
-            return PromptForTmNotification(@event, notification);
-        if (@event.Type == EventType.ReviewerNewNotification)
-            return PromptForReviewerNewNotification(@event, notification);
-        if (@event.Type == EventType.ReviewerReminderNotification)
-            return PromptForReviewerReminderNotification(@event, notification);
-        // Add more combinations as needed
-        return string.Empty;
+        switch (@event.Type)
+        {
+            case EventType.TmNotification:
+                return PromptForTmNotification(@event);
+            case EventType.ReviewerNewNotification:
+                return PromptForReviewerNewNotification(@event);
+            case EventType.ReviewerReminderNotification:
+                return PromptForReviewerReminderNotification(@event, notification);
+            // Add more combinations as needed
+            default:
+                return string.Empty;
+        }
     }
 
-    private string PromptForTmNotification(Event @event, Notification notification)
+    private string BuildPrompt(string prompt, string contentJson, Event @event, Dictionary<string, string>? additionalProperties = null)
     {
-        var doc = System.Text.Json.JsonDocument.Parse(@event.ContentJson!);
-        var applicationUrl = doc.RootElement.GetProperty("ApplicationLink").GetString();
-        var startDate = doc.RootElement.GetProperty("StartDate").GetString();
-        var talentName = @event.ForName ?? "the talent";
-        return $@"Write a polite email message to a Talent Mentor, informing them that it is time for the performance review of their talent named {talentName}.
-            Ask them to initiate the review event at the following application URL: {applicationUrl}.
-            The review should be started no later than this date: {startDate}.
-            Be formal, clear, and appreciative in your tone. End the message with a thank you and a professional closing. Do not include a subject line.";
+        var safeContentJson = contentJson ?? string.Empty;
+        var result = $"{_openAISettings.BasePrompt}\n{prompt}\nJSON data: {safeContentJson}";
+        if (!string.IsNullOrEmpty(@event.ForName))
+            result += $"\nForName: {@event.ForName}";
+        if (!string.IsNullOrEmpty(@event.ToName))
+            result += $"\nToName: {@event.ToName}";
+        if (!string.IsNullOrEmpty(@event.FromName))
+            result += $"\nFromName: {@event.FromName}";
+        if (additionalProperties != null)
+        {
+            foreach (var kv in additionalProperties)
+            {
+                result += $"\n{kv.Key}: {kv.Value}";
+            }
+        }
+        return result;
     }
 
-    private string PromptForReviewerNewNotification(Event @event, Notification notification)
+    private string PromptForTmNotification(Event @event)
     {
-        var doc = System.Text.Json.JsonDocument.Parse(@event.ContentJson!);
-        var applicationUrl = doc.RootElement.GetProperty("ApplicationLink").GetString();
-        var endDate = doc.RootElement.GetProperty("EndDate").GetString();
-        var talentName = @event.ForName ?? "the talent";
-        return $@"Write a polite email message to a colleague of {talentName}, asking them to provide feedback for the performance review.
-            The feedback form is available at the following link: {applicationUrl}.
-            The feedback must be submitted no later than: {endDate}.
-            Be formal, clear, and appreciative in your tone. End the message with a thank you and a professional closing. Do not include a subject line.";
+        return BuildPrompt(_openAISettings.TmNotificationPrompt, @event.ContentJson!, @event);
+    }
+
+    private string PromptForReviewerNewNotification(Event @event)
+    {
+        return BuildPrompt(_openAISettings.ReviewerNewNotificationPrompt, @event.ContentJson!, @event);
     }
 
     private string PromptForReviewerReminderNotification(Event @event, Notification notification)
     {
-        var doc = System.Text.Json.JsonDocument.Parse(@event.ContentJson!);
-        var applicationUrl = doc.RootElement.GetProperty("ApplicationLink").GetString();
-        var endDate = doc.RootElement.GetProperty("EndDate").GetString();
-        var talentName = @event.ForName ?? "the talent";
-        int attempt = notification.Attempt;
-
-        string recipient = $"Write an email message to a colleague of {talentName}, ";
-        string formInfo = $@"The feedback form is available at the following link: {applicationUrl}.
-            The feedback must be submitted no later than: {endDate}.
-            ";
-
-        if (attempt <= 2)
-        {
-            return $@"{recipient}reminding them to provide feedback for the performance review.
-                {formInfo}Be formal, clear, and appreciative in your tone. End the message with a thank you and a professional closing. Do not include a subject line.";
-        }
-        if (attempt == 3 || attempt == 4)
-        {
-            return $@"{recipient}reminding them again to provide feedback for the performance review.
-                {formInfo}Be more insistent and less polite, but still professional. Stress the importance of timely completion. Do not include a subject line.";
-        }
-        // attempt >= 5
-        return $@"{recipient}warning them that they have not provided feedback for the performance review despite multiple reminders.
-                {formInfo}If the feedback is not submitted immediately, this situation will be escalated to upper management. Be strict and formal, and emphasize the consequences of further delay. Do not include a subject line.";
+        return BuildPrompt(_openAISettings.ReviewerReminderNotificationPrompt, @event.ContentJson!, @event, new Dictionary<string, string> { { "Attempts", notification.Attempt.ToString() } });
     }
 }
