@@ -1,6 +1,25 @@
 version: '3.8'
 
 services:
+  zion-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: zion_reminder_api
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ConnectionStrings__DefaultConnection=Host=postgres;Database=zionreminderdb;Username=postgres;Password=postgres
+      - EMAIL_PASSWORD=${EMAIL_PASSWORD:-placeholder-password}
+      # Use the line below if you don't want to use the .env file
+      # - EMAIL_PASSWORD=your-actual-email-password
+    ports:
+      - "8080:8080"
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    networks:
+      - zion-network
+
   postgres:
     image: postgres:16-alpine
     container_name: zion_reminder_postgres
