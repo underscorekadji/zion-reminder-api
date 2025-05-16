@@ -25,7 +25,7 @@ builder.Configuration.AddJsonFile("appsettings.OpenAI.json", optional: true, rel
 var app = builder.Build();
 
 // Configure the HTTP request pipeline
-if (app.Environment.IsDevelopment())
+if (true)
 {
     app.UseSwagger();
     app.UseSwaggerUI(c => 
