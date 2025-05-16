@@ -13,13 +13,12 @@ public class OpenAISettings
 
     public static OpenAISettings FromConfiguration(IConfiguration configuration)
     {
-        var section = configuration.GetSection("OpenAI");
-        var settings = section.Get<OpenAISettings>() ?? new OpenAISettings();
+        var section = configuration.GetSection("OpenAI");        var settings = section.Get<OpenAISettings>() ?? new OpenAISettings();
 
-        // Получаем секцию с промптами
+        // Get the prompts section
         var promptsSection = section.GetSection("MessageGeneratorPrompts");
 
-        // Промпты теперь ищем внутри MessageGeneratorPrompts
+        // Find prompts inside MessageGeneratorPrompts section
         settings.BasePrompt = ConcatPrompt(promptsSection, "BasePrompt", settings.BasePrompt);
         settings.TmNotificationPrompt = ConcatPrompt(promptsSection, "TmNotificationPrompt", settings.TmNotificationPrompt);
         settings.ReviewerNewNotificationPrompt = ConcatPrompt(promptsSection, "ReviewerNewNotificationPrompt", settings.ReviewerNewNotificationPrompt);

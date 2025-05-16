@@ -1,6 +1,8 @@
 using Zion.Reminder.Data;
 using Zion.Reminder.Models;
+using Zion.Reminder.Config;
 using System.Text.Json;
+using Microsoft.Extensions.Options;
 
 namespace Zion.Reminder.Services;
 
@@ -16,117 +18,211 @@ public class EventProcessor : IEventProcessor
     private readonly AppDbContext _dbContext;
     private readonly ILogger<EventProcessor> _logger;
     private readonly IConfiguration _configuration;
+    private readonly ReviewerSettings _reviewerSettings;
 
-    public EventProcessor(AppDbContext dbContext, ILogger<EventProcessor> logger, IConfiguration configuration)
+    public EventProcessor(
+        AppDbContext dbContext,
+        ILogger<EventProcessor> logger,
+        IConfiguration configuration,
+        IOptions<ReviewerSettings> reviewerSettings)
     {
         _dbContext = dbContext;
         _logger = logger;
         _configuration = configuration;
+        _reviewerSettings = reviewerSettings.Value;
     }
-
     public void CreateSendToReviewerEvent(SendToReviewerRequest request)
     {
-        _logger.LogInformation($"Creating reviewer event for {request.ToName} ({request.ToEmail}) with {request.ForEmails.Count} recipients");
+        _logger.LogInformation($"Creating reviewer events for {request.RequestedBy.Name} ({request.RequestedBy.Email}) regarding {request.RequestedFor.Name} with {request.Reviewers.Count} reviewers");
 
-        // Basic validation
-        if (request.ForNames.Count != request.ForEmails.Count)
-            throw new ArgumentException("ForNames and ForEmails must have the same length");
-        if (request.ForNames.Count == 0)
-            throw new ArgumentException("At least one reviewer must be specified");
+        // Validate the request model
+        request.Validate();
 
-        // Get the default Attempt value from config if not provided in the request
-        int? configAttempt = null;
-        var val = _configuration["Reviewer:DefaultAttempt"];
-        if (int.TryParse(val, out int parsedConfigAttempt))
-            configAttempt = parsedConfigAttempt;
-        int attemptValue = request.Attempt ?? configAttempt ?? throw new InvalidOperationException("Default attempt value is not set in configuration and not provided in request.");
+        // Get the configured attempt value
+        int attemptValue = GetConfiguredAttempts(request.Attempt);
 
         // Create content object for dynamic data
         var contentData = new
         {
-            ApplicationLink = request.ApplicationLink,
+            request.ApplicationLink,
             Attempt = attemptValue,
-            EndDate = request.EndDate
+            request.EndDate
         };
 
-        var newEvent = new Event
+        var serializedContent = JsonSerializer.Serialize(contentData);        // Calculate reminder schedule if we have multiple attempts
+        var reminderSchedule = new List<DateTime>();
+        if (attemptValue > 0 && request.EndDate.HasValue)
         {
-            Type = EventType.ReviewerNewNotification,
-            From = string.Empty, // Not provided in request
-            FromName = string.Empty, // Not provided in request
-            To = request.ToEmail,
-            ToName = request.ToName,
-            Status = EventStatus.Open,
-            ContentJson = JsonSerializer.Serialize(contentData)
-        };
+            reminderSchedule = GetNotificationSchedule(DateTime.UtcNow, request.EndDate.Value, attemptValue);
 
-        _dbContext.Events.Add(newEvent);
-        _dbContext.SaveChanges(); // To get EventId for notifications
-
-        // Get notification schedule
-        if (!request.EndDate.HasValue)
-            throw new ArgumentException("EndDate must be provided for scheduling notifications.");
-
-        var schedule = GetNotificationSchedule(DateTime.UtcNow, request.EndDate.Value, attemptValue);
-
-        for (int i = 0; i < request.ForEmails.Count; i++)
-        {
-            for (int j = 0; j < schedule.Count; j++)
+            // Log if the number of reminders is less than requested attempts due to day limitations
+            if (reminderSchedule.Count < attemptValue)
             {
-                var notification = new Notification
+                _logger.LogWarning($"Requested {attemptValue} reminder attempts but only created {reminderSchedule.Count} due to day limitations");
+            }
+        }
+
+        int totalNotifications = 0;
+
+        // Create events and notifications for each reviewer
+        foreach (var reviewer in request.Reviewers)
+        {
+            // Create New Notification Event
+            var newNotificationEvent = new Event
+            {
+                Type = EventType.ReviewerNewNotification,
+                From = request.RequestedBy.Email,
+                FromName = request.RequestedBy.Name,
+                To = reviewer.Email,
+                ToName = reviewer.Name,
+                For = request.RequestedFor.Email,
+                ForName = request.RequestedFor.Name,
+                Status = EventStatus.Open,
+                ContentJson = serializedContent
+            };
+
+            _dbContext.Events.Add(newNotificationEvent);
+            _dbContext.SaveChanges(); // To get EventId for notifications
+
+            // Create one immediate notification for the new notification event
+            var newNotification = new Notification
+            {
+                EventId = newNotificationEvent.Id,
+                Status = NotificationStatus.Setupped,
+                Channel = NotificationChannel.Email,
+                ChannelAddress = reviewer.Email,
+                SendDateTime = DateTime.UtcNow, // Send immediately
+                Attempt = 0,
+                NotificationType = NotificationType.ReviewerNotification
+            };
+
+            _dbContext.Notifications.Add(newNotification);
+            totalNotifications++;
+
+            // Only create reminder event and notifications if we have reminders to send
+            if (reminderSchedule.Count > 0)
+            {
+                // Create Reminder Notification Event
+                var reminderEvent = new Event
                 {
-                    EventId = newEvent.Id,
-                    Status = NotificationStatus.Setupped,
-                    Channel = NotificationChannel.Email,
-                    ChannelAddress = request.ForEmails[i],
-                    SendDateTime = schedule[j],
-                    Attempt = j,
-                    NotificationType = j == 0 ? NotificationType.ReviewerNotification : NotificationType.ReminderNotification
+                    Type = EventType.ReviewerReminderNotification,
+                    From = request.RequestedBy.Email,
+                    FromName = request.RequestedBy.Name,
+                    To = reviewer.Email,
+                    ToName = reviewer.Name,
+                    For = request.RequestedFor.Email,
+                    ForName = request.RequestedFor.Name,
+                    Status = EventStatus.Open,
+                    ContentJson = serializedContent
                 };
-                _dbContext.Notifications.Add(notification);
+
+                _dbContext.Events.Add(reminderEvent);
+                _dbContext.SaveChanges(); // To get EventId for notifications
+
+                // Create multiple reminder notifications with scheduled times
+                for (int j = 0; j < reminderSchedule.Count; j++)
+                {
+                    var reminderNotification = new Notification
+                    {
+                        EventId = reminderEvent.Id,
+                        Status = NotificationStatus.Setupped,
+                        Channel = NotificationChannel.Email,
+                        ChannelAddress = reviewer.Email,
+                        SendDateTime = reminderSchedule[j],
+                        Attempt = j + 1, // Attempt 1, 2, 3, etc.
+                        NotificationType = NotificationType.ReminderNotification
+                    };
+
+                    _dbContext.Notifications.Add(reminderNotification);
+                    totalNotifications++;
+                }
             }
         }
 
         _dbContext.SaveChanges();
 
-        _logger.LogInformation($"Successfully saved reviewer event with ID {newEvent.Id} and {request.ForEmails.Count * schedule.Count} notifications");
+        _logger.LogInformation($"Successfully created events and {totalNotifications} notifications for {request.Reviewers.Count} reviewers");
     }
-
     public static List<DateTime> GetNotificationSchedule(DateTime startDate, DateTime endDate, int attempts)
     {
         if (attempts <= 0)
             throw new ArgumentException("Number of attempts must be greater than 0", nameof(attempts));
-        if (endDate <= startDate)
+
+        // Make sure we're working with dates at the start of the day
+        var startDay = startDate.Date;
+        var endDay = endDate.Date;
+
+        if (endDay <= startDay)
             throw new ArgumentException("End date must be after start date");
 
         var result = new List<DateTime>();
-        double interval = (endDate - startDate).TotalHours / (attempts + 1);
 
-        for (int i = 1; i <= attempts; i++)
+        // Calculate available days (excluding start day, but including end day)
+        int availableDays = (int)(endDay - startDay).TotalDays;
+
+        // If we have fewer days than requested attempts, limit attempts to available days
+        int actualAttempts = Math.Min(attempts, availableDays);
+
+        if (actualAttempts == 0)
         {
-            var sendTime = startDate.AddHours(interval * i);
+            // If no days available for attempts, return empty list
+            return result;
+        }
+
+        // Always ensure the last notification is sent on the end date (deadline day)
+        if (actualAttempts == 1)
+        {
+            // If only one attempt, it should be on the deadline day
+            var sendTime = endDay.AddHours(10); // 10 AM on deadline day for urgent attention
             result.Add(sendTime);
         }
+        else
+        {
+            // Last notification is always on the deadline day
+            result.Add(endDay.AddHours(10)); // 10 AM on deadline day
+
+            // If we have more than one attempt, distribute the rest evenly from start to one day before end
+            if (actualAttempts > 1)
+            {
+                // Calculate days between start and one day before end date
+                int daysUntilOneBeforeEnd = availableDays - 1;
+
+                // Number of attempts excluding the final one
+                int remainingAttempts = actualAttempts - 1;
+
+                // If we have days for remaining attempts
+                if (daysUntilOneBeforeEnd > 0 && remainingAttempts > 0)
+                {
+                    double step = (double)daysUntilOneBeforeEnd / (remainingAttempts + 1);
+
+                    for (int i = 1; i <= remainingAttempts; i++)
+                    {
+                        // Calculate the day number for this attempt
+                        int dayNumber = (int)Math.Round(step * i);
+
+                        // Create notification at noon on that day
+                        var sendTime = startDay.AddDays(dayNumber).AddHours(12);
+                        result.Add(sendTime);
+                    }
+                }
+            }
+
+            // Ensure no duplicate days (round-off errors might cause) and sort by date
+            result = result.GroupBy(x => x.Date)
+                          .Select(g => g.First())
+                          .OrderBy(d => d)
+                          .ToList();
+        }
+
         return result;
     }
-
     public void CreateSendToTmEvent(SendToTmRequest request)
     {
-        _logger.LogInformation($"Creating event for TM {request.ToName} ({request.ToEmail}) regarding employee {request.ForName} ({request.ForEmail})");
-        _logger.LogInformation($"From: {request.FromName} ({request.From}), Start Date: {request.StartDate}, End Date: {request.EndDate}, Correlation ID: {request.CorrelationId}");
-        // Validate that startDate is now or in the future
-        if (request.StartDate < DateTime.UtcNow)
-        {
-            _logger.LogWarning($"Invalid start date: {request.StartDate}. Start date must be now or in the future.");
-            throw new ArgumentException("Start date must be now or in the future.", nameof(request.StartDate));
-        }
+        _logger.LogInformation($"Creating event for TM {request.TalentManager.Name} ({request.TalentManager.Email}) regarding employee {request.Talent.Name} ({request.Talent.Email})");
+        _logger.LogInformation($"From: {request.By.Name} ({request.By.Email}), Start Date: {request.StartDate}, End Date: {request.EndDate}, Correlation ID: {request.CorrelationId}");
 
-        // Validate endDate if provided
-        if (request.EndDate.HasValue && request.EndDate.Value < request.StartDate)
-        {
-            _logger.LogWarning($"Invalid end date: {request.EndDate}. End date must be after start date: {request.StartDate}.");
-            throw new ArgumentException("End date must be after start date.", nameof(request.EndDate));
-        }
+        // Validate the request model
+        request.Validate();
 
         try
         {
@@ -140,26 +236,24 @@ public class EventProcessor : IEventProcessor
             var newEvent = new Event
             {
                 Type = EventType.TmNotification,
-                From = request.From,
-                FromName = request.FromName,
-                To = request.ToEmail,
-                ToName = request.ToName,
-                For = request.ForEmail,
-                ForName = request.ForName,
+                From = request.By.Email,
+                FromName = request.By.Name,
+                To = request.TalentManager.Email,
+                ToName = request.TalentManager.Name,
+                For = request.Talent.Email,
+                ForName = request.Talent.Name,
                 Status = EventStatus.Open,
                 CorrelationId = request.CorrelationId,
                 ContentJson = JsonSerializer.Serialize(contentData)
             };
 
-            _dbContext.Events.Add(newEvent);
-
-            // Create notification with current time as send time
+            _dbContext.Events.Add(newEvent);            // Create notification with current time as send time
             var notification = new Notification
             {
                 EventId = 0, // Will be set correctly after SaveChanges
                 Status = NotificationStatus.Setupped,
                 Channel = NotificationChannel.Email,
-                ChannelAddress = request.ToEmail,
+                ChannelAddress = request.TalentManager.Email,
                 SendDateTime = DateTime.UtcNow, // Set send time to now
                 NotificationType = NotificationType.ReviewerNotification
             };
@@ -178,20 +272,20 @@ public class EventProcessor : IEventProcessor
             throw;
         }
     }
-
     public void DeleteReviewerNotifications(DeleteReviewerEventRequest request)
     {
+        // Validate the request model
+        request.Validate();
+
         var openEvent = _dbContext.Events
             .Where(e => (e.Type == EventType.ReviewerNewNotification || e.Type == EventType.ReviewerReminderNotification)
                         && e.Status == EventStatus.Open
-                        && e.From == request.FromEmail
-                        && e.To == request.ToEmail
-                        && e.For == request.ForEmail)
-            .FirstOrDefault();
-
-        if (openEvent == null)
+                        && e.From == request.From.Email
+                        && e.To == request.To.Email
+                        && e.For == request.For.Email)
+            .FirstOrDefault(); if (openEvent == null)
         {
-            var message = $"No open reviewer event found for from={request.FromEmail}, to={request.ToEmail}, for={request.ForEmail}";
+            var message = $"No open reviewer event found for from={request.From.Email}, to={request.To.Email}, for={request.For.Email}";
             _logger.LogWarning(message);
             throw new ArgumentException(message);
         }
@@ -208,5 +302,24 @@ public class EventProcessor : IEventProcessor
         openEvent.Status = EventStatus.Closed;
         _dbContext.SaveChanges();
         _logger.LogInformation("Reviewer event {EventId} closed and notifications skipped if not sent.", openEvent.Id);
+    }      /// <summary>
+           /// Gets the configured attempt value from request or default settings.
+           /// The actual number of attempts will be limited by the number of days available between start and end dates.
+           /// </summary>
+           /// <param name="requestAttempt">Optional attempt value from the request</param>
+           /// <returns>The configured attempt value</returns>
+    private int GetConfiguredAttempts(int? requestAttempt)
+    {
+        // Use the provided attempt value or fall back to the default from settings
+        int attemptValue = requestAttempt ?? _reviewerSettings.DefaultAttempt;
+
+        // Ensure we have at least 1 attempt
+        if (attemptValue <= 0)
+        {
+            _logger.LogWarning($"Invalid attempt value {attemptValue}. Using default value of 1.");
+            attemptValue = 1;
+        }
+
+        return attemptValue;
     }
 }

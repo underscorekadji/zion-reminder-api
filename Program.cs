@@ -71,6 +71,7 @@ void SetupConfiguration(WebApplicationBuilder builder)
 {
     builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection("EmailSettings"));
     builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection("Jwt"));
+    builder.Services.Configure<ReviewerSettings>(builder.Configuration.GetSection("Reviewer"));
 }
 
 void SetupServices(WebApplicationBuilder builder)

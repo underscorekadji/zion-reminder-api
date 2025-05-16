@@ -33,27 +33,31 @@ public class ErrorHandlerMiddleware
             {
                 case ArgumentException:
                     response.StatusCode = (int)HttpStatusCode.BadRequest;
+                    _logger.LogWarning("Validation error: {ErrorMessage}", error.Message);
                     break;
                     
                 case KeyNotFoundException:
                     response.StatusCode = (int)HttpStatusCode.NotFound;
+                    _logger.LogWarning("Resource not found: {ErrorMessage}", error.Message);
                     break;
                     
                 case UnauthorizedAccessException:
                     response.StatusCode = (int)HttpStatusCode.Unauthorized;
+                    _logger.LogWarning("Unauthorized access: {ErrorMessage}", error.Message);
                     break;
                     
                 default:
                     // Log the full exception for internal server errors
-                    _logger.LogError(error, error.Message);
+                    _logger.LogError(error, "Error processing request: {ErrorMessage}", error.Message);
                     break;
             }
 
-            // Create error response
+            // Create consistent error response format
             var errorResponse = new
             {
-                Message = error.Message,
-                StatusCode = response.StatusCode
+                success = false,
+                message = error.Message,
+                statusCode = response.StatusCode
             };
             
             var result = JsonSerializer.Serialize(errorResponse);
