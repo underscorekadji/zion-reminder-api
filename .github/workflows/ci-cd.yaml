@@ -1,7 +1,7 @@
 name: .NET CI/CD
 
 on:
-  #orkflow_dispatch:
+  #workflow_dispatch:
   push:
     branches:
       - '**'
