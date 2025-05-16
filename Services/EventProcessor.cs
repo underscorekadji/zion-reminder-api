@@ -50,7 +50,7 @@ public class EventProcessor : IEventProcessor
 
         var newEvent = new Event
         {
-            Type = EventType.ReviewerNotification,
+            Type = EventType.ReviewerNewNotification,
             From = string.Empty, // Not provided in request
             FromName = string.Empty, // Not provided in request
             To = request.ToEmail,
@@ -62,27 +62,52 @@ public class EventProcessor : IEventProcessor
         _dbContext.Events.Add(newEvent);
         _dbContext.SaveChanges(); // To get EventId for notifications
 
+        // Get notification schedule
+        if (!request.EndDate.HasValue)
+            throw new ArgumentException("EndDate must be provided for scheduling notifications.");
+
+        var schedule = GetNotificationSchedule(DateTime.UtcNow, request.EndDate.Value, attemptValue);
+
         for (int i = 0; i < request.ForEmails.Count; i++)
         {
-            var notification = new Notification
+            for (int j = 0; j < schedule.Count; j++)
             {
-                EventId = newEvent.Id,
-                Status = NotificationStatus.Setupped,
-                Channel = NotificationChannel.Email,
-                ChannelAddress = request.ForEmails[i],
-                SendDateTime = DateTime.UtcNow,
-                Attempt = i, // Attempt from 0 to attemptValue-1
-                NotificationType = i == 0 ? NotificationType.ReviewerNotification : NotificationType.ReminderNotification
-            };
-            _dbContext.Notifications.Add(notification);
+                var notification = new Notification
+                {
+                    EventId = newEvent.Id,
+                    Status = NotificationStatus.Setupped,
+                    Channel = NotificationChannel.Email,
+                    ChannelAddress = request.ForEmails[i],
+                    SendDateTime = schedule[j],
+                    Attempt = j,
+                    NotificationType = j == 0 ? NotificationType.ReviewerNotification : NotificationType.ReminderNotification
+                };
+                _dbContext.Notifications.Add(notification);
+            }
         }
 
         _dbContext.SaveChanges();
 
-        _logger.LogInformation($"Successfully saved reviewer event with ID {newEvent.Id} and {request.ForEmails.Count} notifications");
+        _logger.LogInformation($"Successfully saved reviewer event with ID {newEvent.Id} and {request.ForEmails.Count * schedule.Count} notifications");
     }
 
-    // Removed GetDefaultAttemptFromConfig: logic is now inline in CreateSendToReviewerEvent
+    public static List<DateTime> GetNotificationSchedule(DateTime startDate, DateTime endDate, int attempts)
+    {
+        if (attempts <= 0)
+            throw new ArgumentException("Number of attempts must be greater than 0", nameof(attempts));
+        if (endDate <= startDate)
+            throw new ArgumentException("End date must be after start date");
+
+        var result = new List<DateTime>();
+        double interval = (endDate - startDate).TotalHours / (attempts + 1);
+
+        for (int i = 1; i <= attempts; i++)
+        {
+            var sendTime = startDate.AddHours(interval * i);
+            result.Add(sendTime);
+        }
+        return result;
+    }
 
     public void CreateSendToTmEvent(SendToTmRequest request)
     {

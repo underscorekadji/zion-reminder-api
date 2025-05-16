@@ -46,7 +46,8 @@ public class Event
 public enum EventType
 {
     TmNotification,
-    ReviewerNotification
+    ReviewerNewNotification,
+    ReviewerReminderNotification
 }
 
 public enum EventStatus
