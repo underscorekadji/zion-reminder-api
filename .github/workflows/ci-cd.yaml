@@ -1,0 +1,42 @@
+name: .NET CI/CD
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v1
+        with:
+          dotnet-version: '6.0.x'
+
+      - name: Restore dependencies
+        run: dotnet restore src/MyApp.Api/MyApp.Api.csproj
+
+      - name: Build application
+        run: dotnet build src/MyApp.Api/MyApp.Api.csproj --configuration Release --no-restore
+
+      - name: Publish application
+        run: dotnet publish src/MyApp.Api/MyApp.Api.csproj --configuration Release --output ./publish
+
+      - name: Login to Amazon ECR
+        run: |
+          aws ecr get-login-password --region <your-region> | docker login --username AWS --password-stdin <your-account-id>.dkr.ecr.<your-region>.amazonaws.com
+
+      - name: Build and push Docker image to ECR
+        run: |
+          docker build -t myapp:latest .
+          docker tag myapp:latest <your-account-id>.dkr.ecr.<your-region>.amazonaws.com/myapp:latest
+          docker push <your-account-id>.dkr.ecr.<your-region>.amazonaws.com/myapp:latest
+
+      - name: Deploy to production
+        run: |
+          # Add your deployment script or command here
