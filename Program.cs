@@ -10,6 +10,7 @@ using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
+builder.Logging.AddFilter("Microsoft.EntityFrameworkCore", LogLevel.Warning);
 
 // JWT Authentication setup
 var jwtSecret = builder.Configuration["Jwt:Secret"] ?? "your-strong-secret";

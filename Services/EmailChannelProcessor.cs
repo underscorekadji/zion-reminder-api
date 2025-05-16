@@ -76,8 +76,8 @@ public class EmailChannelProcessor : IChannelProcessor
     {
         return @event.Type switch
         {
-            EventType.TmNotification => $"Reminder: Document review required by {FormatDate(@event.EndDate)}",
-            EventType.ReviewerNotification => $"Action Required: Please review document by {FormatDate(@event.EndDate)}",
+            EventType.TmNotification => $"Reminder: Document review required by ",
+            EventType.ReviewerNotification => $"Action Required: Please review document by ",
             _ => $"Zion Reminder: Event notification for {@event.Type}"
         };
     }
@@ -88,9 +88,7 @@ public class EmailChannelProcessor : IChannelProcessor
         {
             { "EventType", @event.Type.ToString() },
             { "From", $"{@event.FromName} ({@event.From})" },
-            { "To", $"{@event.ToName} ({@event.To})" },
-            { "StartDate", FormatDate(@event.StartDate) },
-            { "EndDate", FormatDate(@event.EndDate) }
+            { "To", $"{@event.ToName} ({@event.To})" }
         };
         
         if (!string.IsNullOrEmpty(@event.For))
