@@ -50,7 +50,12 @@ builder.Services.AddSwaggerGen();
 
 // Register notification services
 builder.Services.AddScoped<INotificationProcessor, NotificationProcessor>();
+builder.Services.AddScoped<INotificationProcessorResolver, NotificationProcessorResolver>();
 builder.Services.AddHostedService<NotificationWorker>();
+
+// Register channel processors
+builder.Services.AddScoped<IChannelProcessor, EmailChannelProcessor>();
+builder.Services.AddScoped<IChannelProcessor, TeamsChannelProcessor>();
 
 var app = builder.Build();
 

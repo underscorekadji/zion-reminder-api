@@ -11,18 +11,18 @@ public interface INotificationProcessor
 public class NotificationProcessor : INotificationProcessor
 {
     private readonly ILogger<NotificationProcessor> _logger;
+    private readonly INotificationProcessorResolver _processorResolver;
 
-    public NotificationProcessor(ILogger<NotificationProcessor> logger)
+    public NotificationProcessor(
+        ILogger<NotificationProcessor> logger,
+        INotificationProcessorResolver processorResolver)
     {
         _logger = logger;
+        _processorResolver = processorResolver;
     }
 
-    public Task ProcessNotification(Notification notification)
+    public async Task ProcessNotification(Notification notification)
     {
-        // Currently an empty implementation that will be expanded later
-        // In future, this is where we'll actually send notifications based on the channel
-        
-        // Log that we received the notification for processing
         _logger.LogInformation(
             "Processing notification ID: {NotificationId} for Event: {EventId}, Type: {EventType}, Channel: {Channel}",
             notification.Id,
@@ -30,7 +30,29 @@ public class NotificationProcessor : INotificationProcessor
             notification.Event?.Type,
             notification.Channel);
 
-        // Return a completed task for now since we're not doing any real async work
-        return Task.CompletedTask;
+        try
+        {
+            // Get the appropriate processor for this notification channel
+            var channelProcessor = _processorResolver.GetProcessorForNotification(notification);
+            
+            // Process the notification using the selected processor
+            await channelProcessor.ProcessAsync(notification, notification.Event);
+            
+            _logger.LogInformation(
+                "Successfully processed notification ID: {NotificationId} using {ProcessorType}",
+                notification.Id, 
+                channelProcessor.GetType().Name);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(
+                ex,
+                "Error processing notification ID: {NotificationId}, Channel: {Channel}",
+                notification.Id,
+                notification.Channel);
+            
+            // Re-throw to allow the worker to handle the error appropriately
+            throw;
+        }
     }
 }
