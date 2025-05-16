@@ -28,5 +28,12 @@ namespace Zion.Reminder.Controllers
 
             return Ok(new { success = true, message = "Event created successfully" });
         }
+
+        [HttpDelete("send-to-reviewer")]
+        public IActionResult DeleteReviewerNotifications([FromBody] DeleteReviewerEventRequest request)
+        {
+            _eventProcessor.DeleteReviewerNotifications(request);
+            return Ok(new { success = true, message = "Reviewer event closed and notifications skipped if not sent." });
+        }
     }
 }

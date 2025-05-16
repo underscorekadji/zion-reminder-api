@@ -7,6 +7,7 @@ namespace Zion.Reminder.Services;
 public interface IEventProcessor
 {
     void CreateSendToTmEvent(SendToTmRequest request);
+    void DeleteReviewerNotifications(DeleteReviewerEventRequest request);
 }
 
 public class EventProcessor : IEventProcessor
@@ -86,5 +87,36 @@ public class EventProcessor : IEventProcessor
             _logger.LogError(ex, "Error creating and saving event");
             throw;
         }
+    }
+
+    public void DeleteReviewerNotifications(DeleteReviewerEventRequest request)
+    {
+        var openEvent = _dbContext.Events
+            .Where(e => e.Type == EventType.ReviewerNotification
+                        && e.Status == EventStatus.Open
+                        && e.From == request.FromEmail
+                        && e.To == request.ToEmail
+                        && e.For == request.ForEmail)
+            .FirstOrDefault();
+
+        if (openEvent == null)
+        {
+            var message = $"No open reviewer event found for from={request.FromEmail}, to={request.ToEmail}, for={request.ForEmail}";
+            _logger.LogWarning(message);
+            throw new ArgumentException(message);
+        }
+
+        var notifications = _dbContext.Notifications
+            .Where(n => n.EventId == openEvent.Id && n.Status == NotificationStatus.Setupped)
+            .ToList();
+
+        foreach (var notification in notifications)
+        {
+            notification.Status = NotificationStatus.Skipped;
+        }
+
+        openEvent.Status = EventStatus.Closed;
+        _dbContext.SaveChanges();
+        _logger.LogInformation("Reviewer event {EventId} closed and notifications skipped if not sent.", openEvent.Id);
     }
 }
