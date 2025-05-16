@@ -1,6 +1,1 @@
-namespace Zion.Reminder.Models;
-
-public class DatabaseSettings
-{
-    public string ConnectionString { get; set; } = string.Empty;
-}
+// File removed. Use ConnectionStrings["DefaultConnection"] instead.

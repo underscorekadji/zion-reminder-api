@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Options;
 using Zion.Reminder.Api.Utils;
+using Zion.Reminder.Config;
 
 namespace Zion.Reminder.Api.Controllers
 {
@@ -8,19 +10,20 @@ namespace Zion.Reminder.Api.Controllers
     [Route("api/[controller]")]
     public class AuthController : ControllerBase
     {
-        private readonly IConfiguration _configuration;
+        private readonly JwtSettings jwtSettings;
 
-        public AuthController(IConfiguration configuration)
+        public AuthController(IOptions<JwtSettings> jwtOptions)
         {
-            _configuration = configuration;
+            jwtSettings = jwtOptions.Value;
         }
 
         [HttpPost("token")]
         public IActionResult GetToken()
         {
-            // In a real scenario, validate the requesting service here
-            var secret = _configuration["Jwt:Secret"] ?? "zion-reminder-project-strong-secret-token";
-            var token = JwtTokenGenerator.GenerateToken(secret);
+            // В реальном сценарии здесь должна быть валидация сервиса
+            if (string.IsNullOrWhiteSpace(jwtSettings.Secret))
+                throw new InvalidOperationException("JWT secret is not configured. Please set Jwt__Secret in appsettings or environment variables.");
+            var token = JwtTokenGenerator.GenerateToken(jwtSettings.Secret);
             return Ok(new { token });
         }
     }

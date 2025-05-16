@@ -12,96 +12,8 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Logging.AddFilter("Microsoft.EntityFrameworkCore", LogLevel.Warning);
 
-// JWT Authentication setup
-var jwtSecret = builder.Configuration["Jwt:Secret"] ?? "your-strong-secret";
-
-builder.Services.AddAuthentication(options =>
-{
-    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-})
-.AddJwtBearer(options =>
-{
-    options.TokenValidationParameters = new TokenValidationParameters
-    {
-        ValidateIssuer = false,
-        ValidateAudience = false,
-        ValidateLifetime = true,
-        ValidateIssuerSigningKey = true,
-        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecret))
-    };
-});
-
-builder.Services.AddAuthorization();
-builder.Services.AddControllers();
-
-// Register custom services
-builder.Services.AddScoped<Zion.Reminder.Services.IEventProcessor, Zion.Reminder.Services.EventProcessor>();
-
-// Configure PostgreSQL database
-var databaseSettings = builder.Configuration.GetSection("DatabaseSettings").Get<DatabaseSettings>() 
-    ?? new DatabaseSettings { ConnectionString = builder.Configuration.GetConnectionString("DefaultConnection") ?? "" };
-
-builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseNpgsql(databaseSettings.ConnectionString));
-
-// Configure Email Settings
-// First bind from configuration file
-builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection("EmailSettings"));
-
-// Then override with environment variables if they exist
-var emailSettings = builder.Configuration.GetSection("EmailSettings").Get<EmailSettings>() ?? new EmailSettings();
-var emailPassword = Environment.GetEnvironmentVariable("EMAIL_PASSWORD");
-if (!string.IsNullOrEmpty(emailPassword))
-{
-    // Override the password from environment variable
-    emailSettings.Password = emailPassword;
-    builder.Services.PostConfigure<EmailSettings>(options =>
-    {
-        options.Password = emailPassword;
-    });
-}
-
-builder.Services.AddScoped<IEmailService, EmailService>();
-builder.Services.AddScoped<IReportService, ReportService>();
-
-// Add Swagger/OpenAPI support
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen(options =>
-{
-    options.AddSecurityDefinition("Bearer", new Microsoft.OpenApi.Models.OpenApiSecurityScheme
-    {
-        Name = "Authorization",
-        Type = Microsoft.OpenApi.Models.SecuritySchemeType.Http,
-        Scheme = "bearer",
-        BearerFormat = "JWT",
-        In = Microsoft.OpenApi.Models.ParameterLocation.Header,
-        Description = "JWT Authorization header using the Bearer scheme. Example: 'Bearer {token}'"
-    });
-    options.AddSecurityRequirement(new Microsoft.OpenApi.Models.OpenApiSecurityRequirement
-    {
-        {
-            new Microsoft.OpenApi.Models.OpenApiSecurityScheme
-            {
-                Reference = new Microsoft.OpenApi.Models.OpenApiReference
-                {
-                    Type = Microsoft.OpenApi.Models.ReferenceType.SecurityScheme,
-                    Id = "Bearer"
-                }
-            },
-            new string[] {}
-        }
-    });
-});
-
-// Register notification services
-builder.Services.AddScoped<INotificationProcessor, NotificationProcessor>();
-builder.Services.AddScoped<INotificationProcessorResolver, NotificationProcessorResolver>();
-builder.Services.AddHostedService<NotificationWorker>();
-
-// Register channel processors
-builder.Services.AddScoped<IChannelProcessor, EmailChannelProcessor>();
-builder.Services.AddScoped<IChannelProcessor, TeamsChannelProcessor>();
+SetupConfiguration(builder);
+SetupServices(builder);
 
 var app = builder.Build();
 
@@ -115,7 +27,6 @@ if (app.Environment.IsDevelopment())
         c.RoutePrefix = string.Empty; // Serve Swagger UI at the app's root
     });
 }
-
 
 app.UseHttpsRedirection();
 app.UseAuthentication();
@@ -147,3 +58,86 @@ using (var scope = app.Services.CreateScope())
 }
 
 app.Run();
+
+void SetupConfiguration(WebApplicationBuilder builder)
+{
+    builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection("EmailSettings"));
+    builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection("Jwt"));
+}
+
+void SetupServices(WebApplicationBuilder builder)
+{
+    // JWT Authentication setup using IOptions<JwtSettings>
+    var jwtSettings = builder.Configuration.GetSection("Jwt").Get<JwtSettings>();
+    if (jwtSettings == null || string.IsNullOrWhiteSpace(jwtSettings.Secret))
+        throw new InvalidOperationException("JWT secret is not configured. Please set Jwt__Secret in appsettings or environment variables.");
+    var jwtSecret = jwtSettings.Secret;
+    builder.Services.AddAuthentication(options =>
+    {
+        options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+        options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+    })
+    .AddJwtBearer(options =>
+    {
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = false,
+            ValidateAudience = false,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecret))
+        };
+    });
+
+    builder.Services.AddAuthorization();
+    builder.Services.AddControllers();
+
+    // Register custom services
+    builder.Services.AddScoped<Zion.Reminder.Services.IEventProcessor, Zion.Reminder.Services.EventProcessor>();
+
+    // Configure PostgreSQL database
+    var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+    builder.Services.AddDbContext<AppDbContext>(options =>
+        options.UseNpgsql(connectionString));
+
+    builder.Services.AddScoped<IEmailService, EmailService>();
+    builder.Services.AddScoped<IReportService, ReportService>();
+
+    // Add Swagger/OpenAPI support
+    builder.Services.AddEndpointsApiExplorer();
+    builder.Services.AddSwaggerGen(options =>
+    {
+        options.AddSecurityDefinition("Bearer", new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+        {
+            Name = "Authorization",
+            Type = Microsoft.OpenApi.Models.SecuritySchemeType.Http,
+            Scheme = "bearer",
+            BearerFormat = "JWT",
+            In = Microsoft.OpenApi.Models.ParameterLocation.Header,
+            Description = "JWT Authorization header using the Bearer scheme. Example: 'Bearer {token}'"
+        });
+        options.AddSecurityRequirement(new Microsoft.OpenApi.Models.OpenApiSecurityRequirement
+        {
+            {
+                new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+                {
+                    Reference = new Microsoft.OpenApi.Models.OpenApiReference
+                    {
+                        Type = Microsoft.OpenApi.Models.ReferenceType.SecurityScheme,
+                        Id = "Bearer"
+                    }
+                },
+                new string[] {}
+            }
+        });
+    });
+
+    // Register notification services
+    builder.Services.AddScoped<INotificationProcessor, NotificationProcessor>();
+    builder.Services.AddScoped<INotificationProcessorResolver, NotificationProcessorResolver>();
+    builder.Services.AddHostedService<NotificationWorker>();
+
+    // Register channel processors
+    builder.Services.AddScoped<IChannelProcessor, EmailChannelProcessor>();
+    builder.Services.AddScoped<IChannelProcessor, TeamsChannelProcessor>();
+}
