@@ -20,13 +20,13 @@ jobs:
           dotnet-version: '9.0'
 
       - name: Restore dependencies
-        run: dotnet restore zion-reminder-api.csproj
+        run: dotnet restore Zion.Reminder.Api.csproj
 
       - name: Build application
-        run: dotnet build zion-reminder-api.csproj --configuration Release --no-restore
+        run: dotnet build Zion.Reminder.Api.csproj --configuration Release --no-restore
 
       - name: Publish application
-        run: dotnet publish zion-reminder-api.csproj --configuration Release --output ./publish
+        run: dotnet publish Zion.Reminder.Api.csproj --configuration Release --output ./publish
 
       - name: Login to Amazon ECR
         run: |
