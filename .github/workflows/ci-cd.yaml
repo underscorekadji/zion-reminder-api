@@ -17,7 +17,7 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v2
         with:
-          dotnet-version: '9.0.5'
+          dotnet-version: '9.0.300'
 
       - name: Restore dependencies
         run: dotnet restore Zion.Reminder.Api.csproj
