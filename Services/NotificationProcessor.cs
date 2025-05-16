@@ -34,10 +34,19 @@ public class NotificationProcessor : INotificationProcessor
         {
             // Get the appropriate processor for this notification channel
             var channelProcessor = _processorResolver.GetProcessorForNotification(notification);
-            
+
+            // Null check for notification.Event
+            if (notification.Event == null)
+            {
+                _logger.LogWarning(
+                    "Notification ID: {NotificationId} has a null Event. Skipping processing.",
+                    notification.Id);
+                return;
+            }
+
             // Process the notification using the selected processor
             await channelProcessor.ProcessAsync(notification, notification.Event);
-            
+
             _logger.LogInformation(
                 "Successfully processed notification ID: {NotificationId} using {ProcessorType}",
                 notification.Id, 
@@ -50,7 +59,7 @@ public class NotificationProcessor : INotificationProcessor
                 "Error processing notification ID: {NotificationId}, Channel: {Channel}",
                 notification.Id,
                 notification.Channel);
-            
+
             // Re-throw to allow the worker to handle the error appropriately
             throw;
         }

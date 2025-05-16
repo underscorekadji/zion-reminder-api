@@ -8,17 +8,106 @@ public interface IEventProcessor
 {
     void CreateSendToTmEvent(SendToTmRequest request);
     void DeleteReviewerNotifications(DeleteReviewerEventRequest request);
+    void CreateSendToReviewerEvent(SendToReviewerRequest request);
 }
 
 public class EventProcessor : IEventProcessor
 {
     private readonly AppDbContext _dbContext;
     private readonly ILogger<EventProcessor> _logger;
+    private readonly IConfiguration _configuration;
 
-    public EventProcessor(AppDbContext dbContext, ILogger<EventProcessor> logger)
+    public EventProcessor(AppDbContext dbContext, ILogger<EventProcessor> logger, IConfiguration configuration)
     {
         _dbContext = dbContext;
         _logger = logger;
+        _configuration = configuration;
+    }
+
+    public void CreateSendToReviewerEvent(SendToReviewerRequest request)
+    {
+        _logger.LogInformation($"Creating reviewer event for {request.ToName} ({request.ToEmail}) with {request.ForEmails.Count} recipients");
+
+        // Basic validation
+        if (request.ForNames.Count != request.ForEmails.Count)
+            throw new ArgumentException("ForNames and ForEmails must have the same length");
+        if (request.ForNames.Count == 0)
+            throw new ArgumentException("At least one reviewer must be specified");
+
+        // Get the default Attempt value from config if not provided in the request
+        int? configAttempt = null;
+        var val = _configuration["Reviewer:DefaultAttempt"];
+        if (int.TryParse(val, out int parsedConfigAttempt))
+            configAttempt = parsedConfigAttempt;
+        int attemptValue = request.Attempt ?? configAttempt ?? throw new InvalidOperationException("Default attempt value is not set in configuration and not provided in request.");
+
+        // Create content object for dynamic data
+        var contentData = new
+        {
+            ApplicationLink = request.ApplicationLink,
+            Attempt = attemptValue,
+            EndDate = request.EndDate
+        };
+
+        var newEvent = new Event
+        {
+            Type = EventType.ReviewerNewNotification,
+            From = string.Empty, // Not provided in request
+            FromName = string.Empty, // Not provided in request
+            To = request.ToEmail,
+            ToName = request.ToName,
+            Status = EventStatus.Open,
+            ContentJson = JsonSerializer.Serialize(contentData)
+        };
+
+        _dbContext.Events.Add(newEvent);
+        _dbContext.SaveChanges(); // To get EventId for notifications
+
+        // Get notification schedule
+        if (!request.EndDate.HasValue)
+            throw new ArgumentException("EndDate must be provided for scheduling notifications.");
+
+        var schedule = GetNotificationSchedule(DateTime.UtcNow, request.EndDate.Value, attemptValue);
+
+        for (int i = 0; i < request.ForEmails.Count; i++)
+        {
+            for (int j = 0; j < schedule.Count; j++)
+            {
+                var notification = new Notification
+                {
+                    EventId = newEvent.Id,
+                    Status = NotificationStatus.Setupped,
+                    Channel = NotificationChannel.Email,
+                    ChannelAddress = request.ForEmails[i],
+                    SendDateTime = schedule[j],
+                    Attempt = j,
+                    NotificationType = j == 0 ? NotificationType.ReviewerNotification : NotificationType.ReminderNotification
+                };
+                _dbContext.Notifications.Add(notification);
+            }
+        }
+
+        _dbContext.SaveChanges();
+
+        _logger.LogInformation($"Successfully saved reviewer event with ID {newEvent.Id} and {request.ForEmails.Count * schedule.Count} notifications");
+    }
+
+    public static List<DateTime> GetNotificationSchedule(DateTime startDate, DateTime endDate, int attempts)
+    {
+        if (attempts <= 0)
+            throw new ArgumentException("Number of attempts must be greater than 0", nameof(attempts));
+        if (endDate <= startDate)
+            throw new ArgumentException("End date must be after start date");
+
+        var result = new List<DateTime>();
+        double interval = (endDate - startDate).TotalHours / (attempts + 1);
+
+        for (int i = 1; i <= attempts; i++)
+        {
+            var sendTime = startDate.AddHours(interval * i);
+            result.Add(sendTime);
+        }
+        return result;
     }
 
     public void CreateSendToTmEvent(SendToTmRequest request)
@@ -71,7 +160,8 @@ public class EventProcessor : IEventProcessor
                 Status = NotificationStatus.Setupped,
                 Channel = NotificationChannel.Email,
                 ChannelAddress = request.ToEmail,
-                SendDateTime = DateTime.UtcNow // Set send time to now
+                SendDateTime = DateTime.UtcNow, // Set send time to now
+                NotificationType = NotificationType.ReviewerNotification
             };
 
             // Add notification to event
@@ -92,7 +182,7 @@ public class EventProcessor : IEventProcessor
     public void DeleteReviewerNotifications(DeleteReviewerEventRequest request)
     {
         var openEvent = _dbContext.Events
-            .Where(e => e.Type == EventType.ReviewerNotification
+            .Where(e => (e.Type == EventType.ReviewerNewNotification || e.Type == EventType.ReviewerReminderNotification)
                         && e.Status == EventStatus.Open
                         && e.From == request.FromEmail
                         && e.To == request.ToEmail

@@ -77,7 +77,7 @@ public class EmailChannelProcessor : IChannelProcessor
         return @event.Type switch
         {
             EventType.TmNotification => $"Reminder: Document review required by ",
-            EventType.ReviewerNotification => $"Action Required: Please review document by ",
+            EventType.ReviewerNewNotification => $"Action Required: Please review document by ",
             _ => $"Zion Reminder: Event notification for {@event.Type}"
         };
     }
@@ -144,7 +144,7 @@ public class EmailChannelProcessor : IChannelProcessor
                 htmlBuilder.AppendLine("<h1>Document Review Reminder</h1>");
                 htmlBuilder.AppendLine("<p>This is a reminder that you have a document that requires review.</p>");
                 break;
-            case EventType.ReviewerNotification:
+            case EventType.ReviewerNewNotification:
                 htmlBuilder.AppendLine("<h1>Document Review Request</h1>");
                 htmlBuilder.AppendLine("<p>You have been requested to review a document.</p>");
                 break;
