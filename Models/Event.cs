@@ -36,7 +36,15 @@ public class Event
     public DateTime StartDate { get; set; }
 
     public DateTime? EndDate { get; set; }
-    [Required] public EventStatus Status { get; set; } = EventStatus.Open;
+    
+    [Required] 
+    public EventStatus Status { get; set; } = EventStatus.Open;
+    
+    // Correlation ID for tracking related operations across services
+    public Guid? CorrelationId { get; set; }
+    
+    // Field for storing dynamic data in JSON format
+    public string? ContentJson { get; set; }
 
     // Navigation property - One event has many notifications
     public ICollection<Notification> Notifications { get; set; } = new List<Notification>();

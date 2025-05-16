@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
-using Zion.Reminder.Data;
 using Zion.Reminder.Models;
+using Zion.Reminder.Services;
 
 namespace Zion.Reminder.Controllers;
 
@@ -8,13 +8,13 @@ namespace Zion.Reminder.Controllers;
 [Route("api/[controller]")]
 public class EventsController : ControllerBase
 {
-    private readonly AppDbContext _context;
     private readonly ILogger<EventsController> _logger;
+    private readonly IEventProcessor _eventProcessor;
 
-    public EventsController(AppDbContext context, ILogger<EventsController> logger)
+    public EventsController(ILogger<EventsController> logger, IEventProcessor eventProcessor)
     {
-        _context = context;
         _logger = logger;
+        _eventProcessor = eventProcessor;
     }
 
     // GET: api/events/sent-to-tm
@@ -23,5 +23,23 @@ public class EventsController : ControllerBase
     {
         // Empty response as requested
         return Ok();
+    }
+
+    // POST: api/events/send-to-tm
+    [HttpPost("send-to-tm")]
+    public IActionResult SendToTm([FromBody] SendToTmRequest request)
+    {
+        _logger.LogInformation($"Received request to send notification to TM {request.TmEmail}");
+        
+        _eventProcessor.CreateSendToTmEvent(
+            request.TmName,
+            request.TmEmail,
+            request.EmployeeName,
+            request.EmployeeEmail,
+            request.StartDate,
+            request.CorrelationId,
+            request.ApplicationLink);
+
+        return Ok(new { success = true, message = "Event created successfully" });
     }
 }

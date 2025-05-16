@@ -8,11 +8,12 @@ public class AppDbContext : DbContext
     public AppDbContext(DbContextOptions<AppDbContext> options) : base(options)
     {
     }
-    public DbSet<Event> Events { get; set; } = null!;
-    public DbSet<Notification> Notifications { get; set; } = null!; protected override void OnModelCreating(ModelBuilder modelBuilder)
+    public DbSet<Event> Events { get; set; } = null!;    public DbSet<Notification> Notifications { get; set; } = null!;
+    
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
-
+        
         // Configure Event entity
         modelBuilder.Entity<Event>(entity =>
         {
@@ -21,8 +22,9 @@ public class AppDbContext : DbContext
             entity.Property(e => e.To).IsRequired().HasMaxLength(255);
             entity.Property(e => e.For).HasMaxLength(255);
             entity.Property(e => e.FromName).IsRequired().HasMaxLength(255);
-            entity.Property(e => e.ToName).IsRequired().HasMaxLength(255);
-            entity.Property(e => e.ForName).HasMaxLength(255);
+            entity.Property(e => e.ToName).IsRequired().HasMaxLength(255);            entity.Property(e => e.ForName).HasMaxLength(255);
+            entity.Property(e => e.ContentJson).HasColumnType("text");
+            entity.Property(e => e.CorrelationId).HasColumnType("uuid");
 
             // One-to-Many relationship with Notification
             entity.HasMany(e => e.Notifications)
