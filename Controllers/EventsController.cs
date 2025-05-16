@@ -15,17 +15,7 @@ public class EventsController : ControllerBase
     {
         _logger = logger;
         _eventProcessor = eventProcessor;
-    }
-
-    // GET: api/events/sent-to-tm
-    [HttpGet("sent-to-tm")]
-    public IActionResult GetSentToTm()
-    {
-        // Empty response as requested
-        return Ok();
-    }
-
-    // POST: api/events/send-to-tm
+    }    // POST: api/events/send-to-tm
     [HttpPost("send-to-tm")]
     public IActionResult SendToTm([FromBody] SendToTmRequest request)
     {
@@ -36,6 +26,8 @@ public class EventsController : ControllerBase
             request.TmEmail,
             request.EmployeeName,
             request.EmployeeEmail,
+            request.From,
+            request.FromName,
             request.StartDate,
             request.CorrelationId,
             request.ApplicationLink);

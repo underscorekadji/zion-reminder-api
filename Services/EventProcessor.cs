@@ -6,7 +6,7 @@ namespace Zion.Reminder.Services;
 
 public interface IEventProcessor
 {
-    void CreateSendToTmEvent(string tmName, string tmEmail, string employeeName, string employeeEmail, DateTime startDate, Guid correlationId, string? applicationLink = null);
+    void CreateSendToTmEvent(string tmName, string tmEmail, string employeeName, string employeeEmail, string from, string fromName, DateTime startDate, Guid correlationId, string? applicationLink = null);
 }
 
 public class EventProcessor : IEventProcessor
@@ -19,10 +19,10 @@ public class EventProcessor : IEventProcessor
         _dbContext = dbContext;
         _logger = logger;    }
     
-    public void CreateSendToTmEvent(string tmName, string tmEmail, string employeeName, string employeeEmail, DateTime startDate, Guid correlationId, string? applicationLink = null)
+    public void CreateSendToTmEvent(string tmName, string tmEmail, string employeeName, string employeeEmail, string from, string fromName, DateTime startDate, Guid correlationId, string? applicationLink = null)
     {
         _logger.LogInformation($"Creating event for TM {tmName} ({tmEmail}) regarding employee {employeeName} ({employeeEmail})");
-        _logger.LogInformation($"Start Date: {startDate}, Correlation ID: {correlationId}");
+        _logger.LogInformation($"From: {fromName} ({from}), Start Date: {startDate}, Correlation ID: {correlationId}");
           try
         {
             // Create content object for dynamic data
@@ -33,8 +33,8 @@ public class EventProcessor : IEventProcessor
               var newEvent = new Event
             {
                 Type = EventType.TmNotification,
-                From = "system@zion-reminder.com",  // System generated
-                FromName = "Zion Reminder System",
+                From = from,
+                FromName = fromName,
                 To = tmEmail,
                 ToName = tmName,
                 For = employeeEmail,

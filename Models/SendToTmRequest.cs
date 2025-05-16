@@ -19,6 +19,13 @@ public class SendToTmRequest : RequestModel
     public string EmployeeEmail { get; set; } = string.Empty;
     
     [Required]
+    [EmailAddress]
+    public string From { get; set; } = string.Empty;
+    
+    [Required]
+    public string FromName { get; set; } = string.Empty;
+    
+    [Required]
     public DateTime StartDate { get; set; }
     
     // Link to application
