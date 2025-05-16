@@ -23,14 +23,15 @@ public class EventProcessor : IEventProcessor
     {
         _logger.LogInformation($"Creating event for TM {tmName} ({tmEmail}) regarding employee {employeeName} ({employeeEmail})");
         _logger.LogInformation($"From: {fromName} ({from}), Start Date: {startDate}, Correlation ID: {correlationId}");
-          try
+        try
         {
             // Create content object for dynamic data
             var contentData = new 
             {
                 ApplicationLink = applicationLink
             };
-              var newEvent = new Event
+              
+            var newEvent = new Event
             {
                 Type = EventType.TmNotification,
                 From = from,
@@ -46,9 +47,24 @@ public class EventProcessor : IEventProcessor
             };
             
             _dbContext.Events.Add(newEvent);
+            
+            // Create notification with current time as send time
+            var notification = new Notification
+            {
+                EventId = 0, // Will be set correctly after SaveChanges
+                Status = NotificationStatus.Setupped,
+                Channel = NotificationChannel.Email,
+                ChannelAddress = tmEmail,
+                SendDateTime = DateTime.UtcNow // Set send time to now
+            };
+            
+            // Add notification to event
+            newEvent.Notifications.Add(notification);
+            
             _dbContext.SaveChanges();
             
             _logger.LogInformation($"Successfully saved event with ID {newEvent.Id} to database");
+            _logger.LogInformation($"Created notification with ID {notification.Id} set to send at {notification.SendDateTime}");
         }
         catch (Exception ex)
         {
