@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Zion.Reminder.Models;
 using Zion.Reminder.Data;
 
 var builder = WebApplication.CreateBuilder(args);

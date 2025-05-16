@@ -1,6 +1,6 @@
 namespace Zion.Reminder.Models;
 
-public class Reminder
+public class ReminderModel
 {
     public int Id { get; set; }
     public string Title { get; set; } = string.Empty;
