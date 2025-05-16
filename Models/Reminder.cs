@@ -1,4 +1,4 @@
-namespace zion_reminder_api.Models;
+namespace Zion.Reminder.Models;
 
 public class Reminder
 {

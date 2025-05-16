@@ -1,9 +1,9 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using zion_reminder_api.Data;
-using zion_reminder_api.Models;
+using Zion.Reminder.Data;
+using Zion.Reminder.Models;
 
-namespace zion_reminder_api.Controllers;
+namespace Zion.Reminder.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
