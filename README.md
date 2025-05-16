@@ -69,6 +69,23 @@ The API will be accessible at:
 
 ## Development Workflow
 
+### Installing Entity Framework Core Tools
+
+If you get the error "Could not execute because the specified command or file was not found" when trying to run EF Core commands, you need to install the EF Core CLI tools:
+
+```bash
+# Install the EF Core CLI tools globally
+dotnet tool install --global dotnet-ef
+
+# If already installed, ensure it's up-to-date
+dotnet tool update --global dotnet-ef
+```
+
+Verify the installation with:
+```bash
+dotnet ef --version
+```
+
 ### Creating New Migrations
 
 After making changes to the database models:
@@ -76,6 +93,11 @@ After making changes to the database models:
 ```bash
 dotnet ef migrations add YourMigrationName
 dotnet ef database update
+```
+
+If you receive an error about the design package, add the Microsoft.EntityFrameworkCore.Design package to your project:
+```bash
+dotnet add package Microsoft.EntityFrameworkCore.Design
 ```
 
 ### Building the Project
