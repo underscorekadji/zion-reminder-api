@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Zion.Reminder.Models;
 using Zion.Reminder.Data;
+using Zion.Reminder.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -20,6 +21,10 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 // Add Swagger/OpenAPI support
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+
+// Register notification services
+builder.Services.AddScoped<INotificationProcessor, NotificationProcessor>();
+builder.Services.AddHostedService<NotificationWorker>();
 
 var app = builder.Build();
 
