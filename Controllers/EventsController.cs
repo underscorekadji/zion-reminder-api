@@ -4,8 +4,11 @@ using Zion.Reminder.Models;
 
 namespace Zion.Reminder.Controllers;
 
+using Microsoft.AspNetCore.Authorization;
+
 [ApiController]
 [Route("api/[controller]")]
+[Authorize]
 public class EventsController : ControllerBase
 {
     private readonly AppDbContext _context;
