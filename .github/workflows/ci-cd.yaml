@@ -16,16 +16,16 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v1
         with:
-          dotnet-version: '6.0.x'
+          dotnet-version: '9.0.0-preview.5'
 
       - name: Restore dependencies
-        run: dotnet restore src/MyApp.Api/MyApp.Api.csproj
+        run: dotnet restore zion-reminder-api.csproj
 
       - name: Build application
-        run: dotnet build src/MyApp.Api/MyApp.Api.csproj --configuration Release --no-restore
+        run: dotnet build zion-reminder-api.csproj --configuration Release --no-restore
 
       - name: Publish application
-        run: dotnet publish src/MyApp.Api/MyApp.Api.csproj --configuration Release --output ./publish
+        run: dotnet publish zion-reminder-api.csproj --configuration Release --output ./publish
 
       - name: Login to Amazon ECR
         run: |
