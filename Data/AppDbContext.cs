@@ -9,15 +9,23 @@ public class AppDbContext : DbContext
     {
     }
 
-    public DbSet<Reminder> Reminders { get; set; } = null!;
+    public DbSet<ReminderModel> Reminders { get; set; } = null!;
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
 
+        // Configure entity properties
+        modelBuilder.Entity<ReminderModel>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Title).IsRequired().HasMaxLength(200);
+            entity.Property(e => e.Description).HasMaxLength(1000);
+        });
+
         // Seed some initial data
-        modelBuilder.Entity<Reminder>().HasData(
-            new Reminder
+        modelBuilder.Entity<ReminderModel>().HasData(
+            new ReminderModel
             {
                 Id = 1,
                 Title = "Complete project documentation",
@@ -25,7 +33,7 @@ public class AppDbContext : DbContext
                 DueDate = DateTime.UtcNow.AddDays(7),
                 Priority = Priority.High
             },
-            new Reminder
+            new ReminderModel
             {
                 Id = 2,
                 Title = "Weekly team meeting",

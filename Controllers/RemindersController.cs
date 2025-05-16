@@ -20,14 +20,14 @@ public class RemindersController : ControllerBase
 
     // GET: api/reminders
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<Reminder>>> GetReminders()
+    public async Task<ActionResult<IEnumerable<ReminderModel>>> GetReminders()
     {
         return await _context.Reminders.ToListAsync();
     }
 
     // GET: api/reminders/5
     [HttpGet("{id}")]
-    public async Task<ActionResult<Reminder>> GetReminder(int id)
+    public async Task<ActionResult<ReminderModel>> GetReminder(int id)
     {
         var reminder = await _context.Reminders.FindAsync(id);
 
@@ -41,7 +41,7 @@ public class RemindersController : ControllerBase
 
     // POST: api/reminders
     [HttpPost]
-    public async Task<ActionResult<Reminder>> CreateReminder(Reminder reminder)
+    public async Task<ActionResult<ReminderModel>> CreateReminder(ReminderModel reminder)
     {
         reminder.CreatedAt = DateTime.UtcNow;
         _context.Reminders.Add(reminder);
@@ -52,7 +52,7 @@ public class RemindersController : ControllerBase
 
     // PUT: api/reminders/5
     [HttpPut("{id}")]
-    public async Task<IActionResult> UpdateReminder(int id, Reminder reminder)
+    public async Task<IActionResult> UpdateReminder(int id, ReminderModel reminder)
     {
         if (id != reminder.Id)
         {
