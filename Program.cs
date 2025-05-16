@@ -1,15 +1,18 @@
 using Microsoft.EntityFrameworkCore;
 using zion_reminder_api.Data;
+using zion_reminder_api.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container
 builder.Services.AddControllers();
 
-// Add DbContext using in-memory database for simplicity
-// In a production app, you would use a real database
+// Configure PostgreSQL database
+var databaseSettings = builder.Configuration.GetSection("DatabaseSettings").Get<DatabaseSettings>() 
+    ?? new DatabaseSettings { ConnectionString = builder.Configuration.GetConnectionString("DefaultConnection") ?? "" };
+
 builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseInMemoryDatabase("ReminderDb"));
+    options.UseNpgsql(databaseSettings.ConnectionString));
 
 // Add Swagger/OpenAPI support
 builder.Services.AddEndpointsApiExplorer();
@@ -36,12 +39,21 @@ app.MapGet("/hello", () => "Hello World from Zion Reminder API!");
 
 app.MapControllers();
 
-// Seed database
+// Apply migrations at startup
 using (var scope = app.Services.CreateScope())
 {
     var services = scope.ServiceProvider;
-    var context = services.GetRequiredService<AppDbContext>();
-    context.Database.EnsureCreated();
+    try
+    {
+        var context = services.GetRequiredService<AppDbContext>();
+        // Apply migrations if they're pending
+        context.Database.Migrate();
+    }
+    catch (Exception ex)
+    {
+        var logger = services.GetRequiredService<ILogger<Program>>();
+        logger.LogError(ex, "An error occurred while migrating or seeding the database.");
+    }
 }
 
 app.Run();

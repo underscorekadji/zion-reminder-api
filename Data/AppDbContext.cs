@@ -15,6 +15,14 @@ public class AppDbContext : DbContext
     {
         base.OnModelCreating(modelBuilder);
 
+        // Configure entity properties
+        modelBuilder.Entity<Reminder>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Title).IsRequired().HasMaxLength(200);
+            entity.Property(e => e.Description).HasMaxLength(1000);
+        });
+
         // Seed some initial data
         modelBuilder.Entity<Reminder>().HasData(
             new Reminder

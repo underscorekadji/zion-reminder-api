@@ -1,13 +1,94 @@
 # Zion Reminder API
 
-A RESTful API for managing reminders and tasks, built with ASP.NET Core.
+A RESTful API for managing reminders and tasks, built with ASP.NET Core and PostgreSQL.
 
 ## Features
 
 - Create, read, update, and delete reminders
 - Mark reminders as complete
 - Filter reminders by status and priority
-- In-memory database for quick development and testing
+- PostgreSQL database running in Docker
+
+## Prerequisites
+
+- [.NET 9 SDK](https://dotnet.microsoft.com/download)
+- [Docker](https://www.docker.com/products/docker-desktop)
+- [Docker Compose](https://docs.docker.com/compose/install/)
+
+## Running Locally
+
+Follow these steps to run the API on your local machine:
+
+### 1. Clone the Repository
+
+```bash
+git clone https://github.com/your-username/zion-reminder-api.git
+cd zion-reminder-api
+```
+
+### 2. Start the PostgreSQL Database with Docker
+
+```bash
+docker-compose up -d
+```
+
+This command starts the PostgreSQL database and pgAdmin in detached mode. You can verify they're running with:
+
+```bash
+docker ps
+```
+
+### 3. Apply Database Migrations
+
+Ensure the Entity Framework Core tools are installed:
+
+```bash
+dotnet tool install --global dotnet-ef
+```
+
+Then apply the migrations:
+
+```bash
+dotnet ef database update
+```
+
+### 4. Run the API
+
+```bash
+dotnet run
+```
+
+The API will be accessible at:
+- HTTP: http://localhost:5243
+- HTTPS: https://localhost:7108
+
+### 5. Explore the API
+
+- Swagger UI: https://localhost:7108/ (or http://localhost:5243/)
+- pgAdmin: http://localhost:5050 (email: admin@example.com, password: admin)
+
+## Development Workflow
+
+### Creating New Migrations
+
+After making changes to the database models:
+
+```bash
+dotnet ef migrations add YourMigrationName
+dotnet ef database update
+```
+
+### Building the Project
+
+```bash
+dotnet build
+```
+
+### Running Tests
+
+```bash
+dotnet test
+```
 
 ## API Endpoints
 
@@ -20,16 +101,10 @@ A RESTful API for managing reminders and tasks, built with ASP.NET Core.
 | PATCH  | /api/reminders/{id}/complete | Mark a reminder as complete  |
 | DELETE | /api/reminders/{id}      | Delete a reminder                |
 
-## Getting Started
-
-1. Clone the repository
-2. Navigate to the project directory
-3. Run `dotnet run` to start the API
-4. Access the Swagger UI at `https://localhost:7108/swagger`
-
 ## Technologies
 
 - ASP.NET Core 9.0
 - Entity Framework Core
-- In-memory database (for development)
+- PostgreSQL
+- Docker & Docker Compose
 - Swagger/OpenAPI
