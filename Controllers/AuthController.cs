@@ -20,7 +20,7 @@ namespace Zion.Reminder.Api.Controllers
         [HttpPost("token")]
         public IActionResult GetToken()
         {
-            if (string.IsNullOrWhiteSpace(jwtSettings.Secret))
+             if (string.IsNullOrWhiteSpace(jwtSettings.Secret))
                 throw new InvalidOperationException("JWT secret is not configured. Please set Jwt__Secret in appsettings or environment variables.");
             var token = JwtTokenGenerator.GenerateToken(jwtSettings.Secret);
             return Ok(new { token });
