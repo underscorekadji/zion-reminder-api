@@ -3,6 +3,12 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Zion.Reminder.Models;
 
+public enum NotificationType
+{
+    ReviewerNotification,
+    ReminderNotification
+}
+
 public class Notification
 {
     public int Id { get; set; }
@@ -20,6 +26,10 @@ public class Notification
     public string ChannelAddress { get; set; } = string.Empty;
 
     public DateTime? SendDateTime { get; set; }
+
+    public NotificationType NotificationType { get; set; }
+
+    public int Attempt { get; set; } // Field for attempt number
     
     // Navigation property - Each notification belongs to one event
     [ForeignKey("EventId")]

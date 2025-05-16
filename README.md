@@ -112,16 +112,70 @@ dotnet build
 dotnet test
 ```
 
+
 ## API Endpoints
 
-| Method | Endpoint                 | Description                      |
-|--------|--------------------------|----------------------------------|
-| GET    | /api/reminders           | Get all reminders                |
-| GET    | /api/reminders/{id}      | Get a specific reminder          |
-| POST   | /api/reminders           | Create a new reminder            |
-| PUT    | /api/reminders/{id}      | Update an existing reminder      |
-| PATCH  | /api/reminders/{id}/complete | Mark a reminder as complete  |
-| DELETE | /api/reminders/{id}      | Delete a reminder                |
+| Method | Endpoint                              | Description                                 |
+|--------|---------------------------------------|---------------------------------------------|
+| GET    | /api/reminders                        | Get all reminders                           |
+| GET    | /api/reminders/{id}                   | Get a specific reminder                     |
+| POST   | /api/reminders                        | Create a new reminder                       |
+| PUT    | /api/reminders/{id}                   | Update an existing reminder                 |
+| PATCH  | /api/reminders/{id}/complete          | Mark a reminder as complete                 |
+| DELETE | /api/reminders/{id}                   | Delete a reminder                           |
+| POST   | /api/events/send-to-reviewer          | Create reviewer event and notifications     |
+
+---
+
+### Send to Reviewer Endpoint
+
+**POST** `/api/events/send-to-reviewer`
+
+Creates a reviewer event and notifications for multiple recipients.
+
+**Headers:**
+
+```
+Authorization: Bearer <your_token>
+Content-Type: application/json
+```
+
+**Request Body Example:**
+```json
+{
+  "ToName": "Reviewer Manager",
+  "ToEmail": "manager@example.com",
+  "ForNames": ["Alice", "Bob"],
+  "ForEmails": ["alice@example.com", "bob@example.com"],
+  "Attempt": 5,
+  "ApplicationLink": "https://example.com/app",
+  "EndDate": "2025-05-30T23:59:59Z"
+}
+```
+
+**Field Descriptions:**
+
+| Field        | Type           | Required | Description                                                      |
+|--------------|----------------|----------|------------------------------------------------------------------|
+| ToName       | string         | Yes      | Name of the reviewer manager                                     |
+| ToEmail      | string (email) | Yes      | Email of the reviewer manager                                    |
+| ForNames     | string[]       | Yes      | List of names to notify                                          |
+| ForEmails    | string[]       | Yes      | List of emails to notify (must match ForNames count)             |
+| Attempt      | int?           | No       | Number of attempts (if not set, uses config default)             |
+| ApplicationLink | string      | No       | Link to the application (optional, replaces Application)         |
+| EndDate      | datetime?      | No       | Optional end date for the event                                  |
+
+**Behavior:**
+- If `Attempt` is not provided, the default value from config (`Reviewer:DefaultAttempt`) is used.
+- For each recipient in `ForEmails`, a notification is created with the corresponding `ForName` and an `Attempt` value from 0 to (attempt-1).
+
+**Example Success Response:**
+```json
+{
+  "success": true,
+  "message": "Reviewer event and notifications created successfully"
+}
+```
 
 
 ## Authorization Usage (JWT)
