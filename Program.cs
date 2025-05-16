@@ -44,11 +44,9 @@ builder.Services.AddScoped<IEventProcessor, EventProcessor>();
 builder.Services.AddScoped<IMessageGenerator, MessageGenerator>();
 
 // Configure PostgreSQL database
-var databaseSettings = builder.Configuration.GetSection("DatabaseSettings").Get<DatabaseSettings>() 
-    ?? new DatabaseSettings { ConnectionString = builder.Configuration.GetConnectionString("DefaultConnection") ?? "" };
-
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseNpgsql(databaseSettings.ConnectionString));
+    options.UseNpgsql(connectionString));
 
 // Configure Email Settings
 // First bind from configuration file
@@ -132,7 +130,6 @@ if (app.Environment.IsDevelopment())
         c.RoutePrefix = string.Empty; // Serve Swagger UI at the app's root
     });
 }
-
 
 app.UseHttpsRedirection();
 app.UseAuthentication();
