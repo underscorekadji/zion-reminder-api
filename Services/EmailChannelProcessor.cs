@@ -54,7 +54,7 @@ public class EmailChannelProcessor : IChannelProcessor
             notification.SendDateTime = DateTime.UtcNow;
 
             _logger.LogInformation(
-                "Email sent successfully for notification ID={NotificationId}, To={Address}",
+                "Email (simulated) for notification ID={NotificationId}, To={Address}",
                 notification.Id,
                 notification.ChannelAddress);
         }
@@ -62,32 +62,21 @@ public class EmailChannelProcessor : IChannelProcessor
         {
             _logger.LogError(
                 ex,
-                "Failed to send email for notification ID={NotificationId}, To={Address}",
+                "Failed to process email for notification ID={NotificationId}, To={Address}",
                 notification.Id,
                 notification.ChannelAddress);
-
-            // We're not updating the status here to allow the worker to retry
-            // In a more complex implementation, we could add retry logic or
-            // update to a Failed status after X retries
-
-            // Re-throw to let the calling code handle the error
             throw;
         }
-    }
-
-    private string FormatSubject(Event @event)
+    }    private string FormatSubject(Event @event)
     {
+        string forName = !string.IsNullOrEmpty(@event.ForName) ? @event.ForName : "your colleague";
+        
         return @event.Type switch
         {
-            EventType.TmNotification => $"Reminder: Document review required by ",
-            EventType.ReviewerNewNotification => $"Action Required: Please review document by ",
-            _ => $"Zion Reminder: Event notification for {@event.Type}"
+            EventType.TmNotification => $"Performance review is starting for {forName}",
+            EventType.ReviewerNewNotification => $"Request to provide feedback for {forName}",
+            EventType.ReviewerReminderNotification => $"Reminder: Feedback for {forName} is still not submitted",
+            _ => $"Zion Reminder: {@event.Type}"
         };
-    }
-
-    private string FormatDate(DateTime? dateTime)
-    {
-        if (dateTime == null) return "Not specified";
-        return dateTime.Value.ToString("MMMM dd, yyyy HH:mm");
     }
 }
