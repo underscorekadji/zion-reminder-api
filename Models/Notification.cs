@@ -18,6 +18,9 @@ public class Notification
     [Required]
     [MaxLength(255)]
     public string ChannelAddress { get; set; } = string.Empty;
+
+    public DateTime? SendDateTime { get; set; }
+    
     // Navigation property - Each notification belongs to one event
     [ForeignKey("EventId")]
     public Event Event { get; set; } = null!;
