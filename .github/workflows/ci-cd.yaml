@@ -1,6 +1,7 @@
 name: .NET CI/CD
 
 on:
+  #workflow_dispatch:
   push:
     branches:
       - '**'
@@ -14,18 +15,18 @@ jobs:
         uses: actions/checkout@v2
 
       - name: Setup .NET
-        uses: actions/setup-dotnet@v1
+        uses: actions/setup-dotnet@v2
         with:
-          dotnet-version: '6.0.x'
+          dotnet-version: '9.0.300'
 
       - name: Restore dependencies
-        run: dotnet restore src/MyApp.Api/MyApp.Api.csproj
+        run: dotnet restore Zion.Reminder.Api.csproj
 
       - name: Build application
-        run: dotnet build src/MyApp.Api/MyApp.Api.csproj --configuration Release --no-restore
+        run: dotnet build Zion.Reminder.Api.csproj --configuration Release --no-restore
 
       - name: Publish application
-        run: dotnet publish src/MyApp.Api/MyApp.Api.csproj --configuration Release --output ./publish
+        run: dotnet publish Zion.Reminder.Api.csproj --configuration Release --output ./publish
 
       - name: Login to Amazon ECR
         run: |
