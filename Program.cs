@@ -3,12 +3,14 @@ using Zion.Reminder.Models;
 using Zion.Reminder.Data;
 using Zion.Reminder.Middleware;
 using Zion.Reminder.Services;
+using Zion.Reminder.Config;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
+builder.Logging.AddFilter("Microsoft.EntityFrameworkCore", LogLevel.Warning);
 
 // JWT Authentication setup
 var jwtSecret = builder.Configuration["Jwt:Secret"] ?? "your-strong-secret";
@@ -42,6 +44,25 @@ var databaseSettings = builder.Configuration.GetSection("DatabaseSettings").Get<
 
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(databaseSettings.ConnectionString));
+
+// Configure Email Settings
+// First bind from configuration file
+builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection("EmailSettings"));
+
+// Then override with environment variables if they exist
+var emailSettings = builder.Configuration.GetSection("EmailSettings").Get<EmailSettings>() ?? new EmailSettings();
+var emailPassword = Environment.GetEnvironmentVariable("EMAIL_PASSWORD");
+if (!string.IsNullOrEmpty(emailPassword))
+{
+    // Override the password from environment variable
+    emailSettings.Password = emailPassword;
+    builder.Services.PostConfigure<EmailSettings>(options =>
+    {
+        options.Password = emailPassword;
+    });
+}
+
+builder.Services.AddScoped<IEmailService, EmailService>();
 
 // Add Swagger/OpenAPI support
 builder.Services.AddEndpointsApiExplorer();

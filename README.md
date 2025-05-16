@@ -19,6 +19,8 @@ A RESTful API for managing reminders and tasks, built with ASP.NET Core and Post
 
 Follow these steps to run the API on your local machine:
 
+> **Note:** For email functionality using Gmail, you need to set up an app password. See the [Configuration](#configuration) section below.
+
 ### 1. Clone the Repository
 
 ```bash
@@ -29,7 +31,7 @@ cd zion-reminder-api
 ### 2. Start the PostgreSQL Database with Docker
 
 ```bash
-docker-compose up -d
+docker-compose up -d postgres pgadmin
 ```
 
 This command starts the PostgreSQL database and pgAdmin in detached mode. You can verify they're running with:
@@ -55,6 +57,10 @@ dotnet ef database update
 ### 4. Run the API
 
 ```bash
+# Configure secret settings
+dotnet user-secrets set "EmailSettings:Password" "your-gmail-app-password-here"
+
+# Run the API
 dotnet run
 ```
 
@@ -200,10 +206,65 @@ If the token is valid, you will receive a response like:
 
 ---
 
+## Configuration
+
+### Email Settings
+
+The API includes email notification functionality that requires SMTP configuration. There are several ways to configure email settings:
+
+#### 1. Development Environment - User Secrets
+
+For local development, use .NET User Secrets to store sensitive information:
+
+```bash
+# Initialize user secrets
+dotnet user-secrets init
+
+# Set the email password
+dotnet user-secrets set "EmailSettings:Password" "your-gmail-app-password"
+```
+
+#### 2. Production Environment - Environment Variables
+
+For production deployment, use environment variables:
+
+```bash
+# PowerShell
+$env:EMAIL_PASSWORD = "your-gmail-app-password"
+
+# Linux/macOS
+export EMAIL_PASSWORD="your-gmail-app-password"
+```
+
+#### 3. Docker Environment
+
+When using Docker, you can:
+
+1. Create a `.env` file from the `.env.sample` template:
+   ```bash
+   cp .env.sample .env
+   # Edit .env with your actual values
+   ```
+
+2. Or provide environment variables directly:
+   ```bash
+   docker-compose up -d -e EMAIL_PASSWORD="your-gmail-app-password"
+   ```
+
+> **⚠️ Important:** For Gmail, you need to:
+> 1. Enable 2-Step Verification on your Google account
+> 2. Generate an "App Password" from your Google Account security settings
+> 3. Use that app password instead of your regular Google password
+
+For more details on environment variable configuration, see [deployment-environment-variables.md](deployment-environment-variables.md).
+
+---
+
 ## Technologies
 
 - ASP.NET Core 9.0
 - Entity Framework Core
 - PostgreSQL
+- MailKit/MimeKit (Email)
 - Docker & Docker Compose
 - Swagger/OpenAPI
