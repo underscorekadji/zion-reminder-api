@@ -2,9 +2,35 @@ using Microsoft.EntityFrameworkCore;
 using Zion.Reminder.Models;
 using Zion.Reminder.Data;
 
+
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
+
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container
+
+// JWT Authentication setup
+var jwtSecret = builder.Configuration["Jwt:Secret"] ?? "your-strong-secret";
+
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+})
+.AddJwtBearer(options =>
+{
+    options.TokenValidationParameters = new TokenValidationParameters
+    {
+        ValidateIssuer = false,
+        ValidateAudience = false,
+        ValidateLifetime = true,
+        ValidateIssuerSigningKey = true,
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecret))
+    };
+});
+
+builder.Services.AddAuthorization();
 builder.Services.AddControllers();
 
 // Configure PostgreSQL database
@@ -31,7 +57,9 @@ if (app.Environment.IsDevelopment())
     });
 }
 
+
 app.UseHttpsRedirection();
+app.UseAuthentication();
 app.UseAuthorization();
 
 // Add a simple hello world endpoint for testing
