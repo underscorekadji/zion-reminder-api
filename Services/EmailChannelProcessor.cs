@@ -73,7 +73,7 @@ public class EmailChannelProcessor : IChannelProcessor
         
         return @event.Type switch
         {
-            EventType.TmNotification => $"Performance review is starting for {forName}",
+            EventType.TmNotification => $"Start performance review for {forName}",
             EventType.ReviewerNewNotification => $"Request to provide feedback for {forName}",
             EventType.ReviewerReminderNotification => $"Reminder: Feedback for {forName} is still not submitted",
             _ => $"Zion Reminder: {@event.Type}"

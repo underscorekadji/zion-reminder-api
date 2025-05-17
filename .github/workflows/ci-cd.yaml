@@ -1,10 +1,11 @@
 name: .NET CI/CD
 
 on:
-  #workflow_dispatch:
   push:
     branches:
       - '**'
+    tags:
+      - '*'
 
 jobs:
   build-dotnet:
@@ -39,7 +40,7 @@ jobs:
     name: Build & Push Docker Image
     needs: build-dotnet
     runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/') && github.ref_name && github.event.base_ref == 'refs/heads/main'
+    if: startsWith(github.ref, 'refs/tags/')
     
     permissions:
       id-token: write
