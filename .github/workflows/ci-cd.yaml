@@ -39,7 +39,7 @@ jobs:
     name: Build & Push Docker Image
     needs: build-dotnet
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
+    if: startsWith(github.ref, 'refs/tags/') && github.ref_name && github.event.base_ref == 'refs/heads/main'
     
     permissions:
       id-token: write
