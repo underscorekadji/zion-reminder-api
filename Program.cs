@@ -19,9 +19,6 @@ SetupConfiguration(builder);
 SetupServices(builder);
 
 
-// Ensure appsettings.OpenAI.json is loaded
-builder.Configuration.AddJsonFile("appsettings.OpenAI.json", optional: true, reloadOnChange: true);
-
 // Add CORS services with unrestricted policy
 builder.Services.AddCors(options =>
 {
@@ -84,6 +81,7 @@ app.Run();
 
 void SetupConfiguration(WebApplicationBuilder builder)
 {
+    builder.Configuration.AddJsonFile("appsettings.OpenAI.json", optional: true, reloadOnChange: true);
     builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection("EmailSettings"));
     builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection("Jwt"));
     builder.Services.Configure<ReviewerSettings>(builder.Configuration.GetSection("Reviewer"));

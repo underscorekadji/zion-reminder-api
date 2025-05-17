@@ -1,4 +1,5 @@
 // Settings for OpenAI integration
+using System;
 using Microsoft.Extensions.Configuration;
 
 public class OpenAISettings
@@ -9,11 +10,24 @@ public class OpenAISettings
     public string BasePrompt { get; set; } = string.Empty;
     public string TmNotificationPrompt { get; set; } = string.Empty;
     public string ReviewerNewNotificationPrompt { get; set; } = string.Empty;
-    public string ReviewerReminderNotificationPrompt { get; set; } = string.Empty;
-
-    public static OpenAISettings FromConfiguration(IConfiguration configuration)
+    public string ReviewerReminderNotificationPrompt { get; set; } = string.Empty;    public static OpenAISettings FromConfiguration(IConfiguration configuration)
     {
-        var section = configuration.GetSection("OpenAI");        var settings = section.Get<OpenAISettings>() ?? new OpenAISettings();
+        var section = configuration.GetSection("OpenAI");
+        var settings = section.Get<OpenAISettings>() ?? new OpenAISettings();
+
+        // Check for environment variables that would override the config
+        var apiKeyEnv = Environment.GetEnvironmentVariable("OpenAI__ApiKey");
+        if (!string.IsNullOrEmpty(apiKeyEnv))
+        {
+            // Override with environment variable value
+            settings.ApiKey = apiKeyEnv;
+        }
+
+        var modelEnv = Environment.GetEnvironmentVariable("OpenAI__Model");
+        if (!string.IsNullOrEmpty(modelEnv))
+        {
+            settings.Model = modelEnv;
+        }
 
         // Get the prompts section
         var promptsSection = section.GetSection("MessageGeneratorPrompts");
