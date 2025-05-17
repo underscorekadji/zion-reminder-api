@@ -129,15 +129,16 @@ dotnet test
 | PUT    | /api/reminders/{id}                   | Update an existing reminder                 |
 | PATCH  | /api/reminders/{id}/complete          | Mark a reminder as complete                 |
 | DELETE | /api/reminders/{id}                   | Delete a reminder                           |
-| POST   | /api/events/send-to-reviewer          | Create reviewer event and notifications     |
+| POST   | /api/events/send-to-reviewer          | Create reviewer event and schedule notifications for each recipient |
 
 ---
+
 
 ### Send to Reviewer Endpoint
 
 **POST** `/api/events/send-to-reviewer`
 
-Creates a reviewer event and notifications for multiple recipients.
+Creates a reviewer event and schedules multiple notifications for each recipient in `ForEmails` according to the calculated schedule.
 
 **Headers:**
 
@@ -149,10 +150,18 @@ Content-Type: application/json
 **Request Body Example:**
 ```json
 {
-  "ToName": "Reviewer Manager",
-  "ToEmail": "manager@example.com",
-  "ForNames": ["Alice", "Bob"],
-  "ForEmails": ["alice@example.com", "bob@example.com"],
+  "RequestedBy": {
+    "Name": "Manager Name",
+    "Email": "manager@example.com"
+  },
+  "RequestedFor": {
+    "Name": "Employee Name",
+    "Email": "employee@example.com"
+  },
+  "Reviewers": [
+    { "Name": "Alice", "Email": "alice@example.com" },
+    { "Name": "Bob", "Email": "bob@example.com" }
+  ],
   "Attempt": 5,
   "ApplicationLink": "https://example.com/app",
   "EndDate": "2025-05-30T23:59:59Z"
@@ -163,17 +172,17 @@ Content-Type: application/json
 
 | Field        | Type           | Required | Description                                                      |
 |--------------|----------------|----------|------------------------------------------------------------------|
-| ToName       | string         | Yes      | Name of the reviewer manager                                     |
-| ToEmail      | string (email) | Yes      | Email of the reviewer manager                                    |
-| ForNames     | string[]       | Yes      | List of names to notify                                          |
-| ForEmails    | string[]       | Yes      | List of emails to notify (must match ForNames count)             |
-| Attempt      | int?           | No       | Number of attempts (if not set, uses config default)             |
-| ApplicationLink | string      | No       | Link to the application (optional, replaces Application)         |
-| EndDate      | datetime?      | No       | Optional end date for the event                                  |
+| RequestedBy  | Person         | Yes      | The user who is requesting the review                            |
+| RequestedFor | Person         | Yes      | The user for whom the review is being requested                  |
+| Reviewers    | Person[]       | Yes      | List of reviewer users (at least one required)                   |
+| Attempt      | int?           | No       | Number of notification attempts per reviewer (if not set, uses config default) |
+| ApplicationLink | string      | No       | Link to the application (optional)                               |
+| EndDate      | datetime?      | Yes      | End date for the event; used to calculate notification schedule  |
 
 **Behavior:**
 - If `Attempt` is not provided, the default value from config (`Reviewer:DefaultAttempt`) is used.
-- For each recipient in `ForEmails`, a notification is created with the corresponding `ForName` and an `Attempt` value from 0 to (attempt-1).
+- For each reviewer in `Reviewers`, notifications are scheduled according to the calculated schedule between the current time and `EndDate` (number of notifications = Attempt).
+- Each notification is created for the corresponding reviewer (using their name and email from the `Person` object).
 
 **Example Success Response:**
 ```json
@@ -207,6 +216,7 @@ You can use tools like Postman, Swagger UI, or curl for this step.
 
 ### 2. Call a Protected Endpoint with the Token
 
+
 For example, to call the `send-to-tm` endpoint:
 
 ```
@@ -222,17 +232,35 @@ Authorization: Bearer <your_token>
 Example request body:
 ```json
 {
-  "TmName": "John Doe",
-  "TmEmail": "john.doe@example.com",
-  "EmployeeName": "Jane Smith",
-  "EmployeeEmail": "jane.smith@example.com",
-  "From": "2025-05-16T10:00:00Z",
-  "FromName": "System",
+  "TalentManager": {
+    "Name": "John Doe",
+    "Email": "john.doe@example.com"
+  },
+  "Talent": {
+    "Name": "Jane Smith",
+    "Email": "jane.smith@example.com"
+  },
+  "By": {
+    "Name": "System",
+    "Email": "system@example.com"
+  },
+  "ApplicationLink": "https://example.com",
   "StartDate": "2025-05-17T09:00:00Z",
-  "CorrelationId": "abc-123",
-  "ApplicationLink": "https://example.com"
+  "EndDate": "2025-05-30T23:59:59Z"
 }
 ```
+
+
+**Field Descriptions:**
+
+| Field            | Type     | Required | Description                                      |
+|------------------|----------|----------|--------------------------------------------------|
+| TalentManager    | Person   | Yes      | The talent manager (recipient of the notification) |
+| Talent           | Person   | Yes      | The employee for whom the notification is sent    |
+| By               | Person   | Yes      | The user who is sending the notification          |
+| ApplicationLink  | string   | Yes      | Link to the application                           |
+| StartDate        | datetime | Yes      | Start date for the event                          |
+| EndDate          | datetime | Yes      | End date for the event                            |
 
 If the token is valid, you will receive a response like:
 ```json
