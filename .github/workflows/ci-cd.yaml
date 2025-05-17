@@ -1,10 +1,11 @@
 name: .NET CI/CD
 
 on:
-  #workflow_dispatch:
   push:
     branches:
       - '**'
+    tags:
+      - '*'
 
 jobs:
   build-dotnet:
