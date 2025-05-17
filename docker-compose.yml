@@ -9,7 +9,7 @@ services:
     environment:
       - ASPNETCORE_ENVIRONMENT=Production
       - ConnectionStrings__DefaultConnection=Host=postgres;Database=zionreminderdb;Username=postgres;Password=postgres
-      - EMAIL_PASSWORD=${EMAIL_PASSWORD:-placeholder-password}
+      - EmailSettings__PASSWORD=${EMAIL_PASSWORD:-placeholder-password}
       # Use the line below if you don't want to use the .env file
       # - EMAIL_PASSWORD=your-actual-email-password
       - OPENAI__APIKEY=${OPENAI__APIKEY}
