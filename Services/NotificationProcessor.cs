@@ -49,7 +49,7 @@ public class NotificationProcessor : INotificationProcessor
 
             _logger.LogInformation(
                 "Successfully processed notification ID: {NotificationId} using {ProcessorType}",
-                notification.Id, 
+                notification.Id,
                 channelProcessor.GetType().Name);
         }
         catch (Exception ex)

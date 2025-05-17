@@ -6,14 +6,15 @@ namespace Zion.Reminder.Models;
 public class DeleteReviewerEventRequest : RequestModel
 {
     [Required]
-    public Person From { get; set; } = new Person();
+    public Person RequestedBy { get; set; } = new Person();
 
     [Required]
-    public Person To { get; set; } = new Person();
+    public Person Reviewer { get; set; } = new Person();
 
     [Required]
-    public Person For { get; set; } = new Person();
-      /// <summary>
+    public Person Talent { get; set; } = new Person();
+
+    /// <summary>
     /// Validates the request model and throws an exception if validation fails
     /// </summary>
     /// <exception cref="ArgumentException">Thrown when validation fails</exception>
@@ -22,29 +23,29 @@ public class DeleteReviewerEventRequest : RequestModel
         // Use the Person class's validation method
         try
         {
-            From.Validate();
+            RequestedBy.Validate();
         }
         catch (ArgumentException ex)
         {
-            throw new ArgumentException($"From person validation failed: {ex.Message}", nameof(From));
+            throw new ArgumentException($"RequestedBy person validation failed: {ex.Message}", nameof(RequestedBy));
         }
         
         try
         {
-            To.Validate();
+            Reviewer.Validate();
         }
         catch (ArgumentException ex)
         {
-            throw new ArgumentException($"To person validation failed: {ex.Message}", nameof(To));
+            throw new ArgumentException($"Reviewer person validation failed: {ex.Message}", nameof(Reviewer));
         }
         
         try
         {
-            For.Validate();
+            Talent.Validate();
         }
         catch (ArgumentException ex)
         {
-            throw new ArgumentException($"For person validation failed: {ex.Message}", nameof(For));
+            throw new ArgumentException($"Talent person validation failed: {ex.Message}", nameof(Talent));
         }
     }
 }

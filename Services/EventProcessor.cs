@@ -275,17 +275,15 @@ public class EventProcessor : IEventProcessor
     public void DeleteReviewerNotifications(DeleteReviewerEventRequest request)
     {
         // Validate the request model
-        request.Validate();
-
-        var openEvent = _dbContext.Events
+        request.Validate();        var openEvent = _dbContext.Events
             .Where(e => (e.Type == EventType.ReviewerNewNotification || e.Type == EventType.ReviewerReminderNotification)
                         && e.Status == EventStatus.Open
-                        && e.From == request.From.Email
-                        && e.To == request.To.Email
-                        && e.For == request.For.Email)
+                        && e.From == request.RequestedBy.Email
+                        && e.To == request.Reviewer.Email
+                        && e.For == request.Talent.Email)
             .FirstOrDefault(); if (openEvent == null)
         {
-            var message = $"No open reviewer event found for from={request.From.Email}, to={request.To.Email}, for={request.For.Email}";
+            var message = $"No open reviewer event found for from={request.RequestedBy.Email}, to={request.Reviewer.Email}, for={request.Talent.Email}";
             _logger.LogWarning(message);
             throw new ArgumentException(message);
         }
