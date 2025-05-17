@@ -22,6 +22,17 @@ SetupServices(builder);
 // Ensure appsettings.OpenAI.json is loaded
 builder.Configuration.AddJsonFile("appsettings.OpenAI.json", optional: true, reloadOnChange: true);
 
+// Add CORS services with unrestricted policy
+builder.Services.AddCors(options =>
+{
+    options.AddDefaultPolicy(policy =>
+    {
+        policy.AllowAnyOrigin()
+              .AllowAnyHeader()
+              .AllowAnyMethod();
+    });
+});
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline
@@ -36,6 +47,10 @@ if (true)
 }
 
 app.UseHttpsRedirection();
+
+// Enable CORS with the default policy
+app.UseCors();
+
 app.UseAuthentication();
 app.UseAuthorization();
 
