@@ -66,15 +66,49 @@ public class NotificationWorker : BackgroundService
             try
             {
                 await processor.ProcessNotification(notification);
-                
-                // Update notification status to Sent (we'd do this in the processor in a real implementation)
+                  // Update notification status to Sent (we'd do this in the processor in a real implementation)
                 notification.Status = NotificationStatus.Sent;
                 await dbContext.SaveChangesAsync(stoppingToken);
-            }
-            catch (Exception ex)
+                
+                // Check and update event status if needed
+                if (notification.Event != null)
+                {
+                    await CheckAndUpdateEventStatusAsync(dbContext, notification.Event, stoppingToken);
+                }
+            }            catch (Exception ex)
             {
                 _logger.LogError(ex, "Error processing notification {NotificationId}", notification.Id);
             }
+        }
+    }
+
+    /// <summary>
+    /// Checks if all notifications for the event are processed (not in Setupped status)
+    /// and updates the event status to Closed if needed
+    /// </summary>
+    /// <param name="dbContext">The database context</param>
+    /// <param name="event">The event to check</param>
+    /// <param name="cancellationToken">A cancellation token</param>
+    /// <returns>Task representing the asynchronous operation</returns>
+    private async Task CheckAndUpdateEventStatusAsync(AppDbContext dbContext, Event @event, CancellationToken cancellationToken)
+    {
+        // Get all notifications for this event
+        var notifications = await dbContext.Notifications
+            .Where(n => n.EventId == @event.Id)
+            .ToListAsync(cancellationToken);
+
+        // Check if any notifications are still in Setupped status
+        bool allProcessed = !notifications.Any(n => n.Status == NotificationStatus.Setupped);
+
+        // If all notifications are processed (Sent or Skipped), update event status to Closed
+        if (allProcessed && @event.Status == EventStatus.Open)
+        {
+            _logger.LogInformation(
+                "All notifications for Event ID={EventId} are processed. Marking event as Closed.",
+                @event.Id);
+
+            @event.Status = EventStatus.Closed;
+            await dbContext.SaveChangesAsync(cancellationToken);
         }
     }
 }
