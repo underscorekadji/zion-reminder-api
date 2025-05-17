@@ -7,7 +7,7 @@ namespace Zion.Reminder.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    //[Authorize]
+    [Authorize]
     public class EventsController : ControllerBase
     {
         private readonly ILogger<EventsController> _logger;
